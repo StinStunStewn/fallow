@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Fallow</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #151718;
+    --bg-base:       #1c1e20;
+    --bg-surface:    #232628;
+    --bg-raised:     #2a2d30;
+    --bg-hover:      #313538;
+    --border:        #333638;
+    --border-light:  #3d4144;
+    --sage:          #7a9e7e;
+    --sage-dim:      #5a7a5e;
+    --sage-glow:     rgba(122,158,126,0.12);
+    --slate:         #7b8fa8;
+    --slate-dim:     #5a6e87;
+    --slate-glow:    rgba(123,143,168,0.12);
+    --gold:          #b49664;
+    --gold-glow:     rgba(180,150,100,0.12);
+    --parchment:     #e2d9c8;
+    --parchment-dim: #a89e8e;
+    --text:          #e2d9c8;
+    --text-dim:      #a89e8e;
+    --text-muted:    #6e6558;
+    --danger:        #a06060;
+    --radius-sm:     6px;
+    --radius:        10px;
+    --radius-lg:     16px;
+    --transition:    0.18s ease;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; background: var(--bg-deep);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 15px; line-height: 1.6; overflow: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* ══ PROJECTS SCREEN ══ */
+  .projects-header {
+    padding: 56px 28px 24px; border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
+  }
+  @media (min-width: 600px) { .projects-header { padding: 64px 40px 28px; } }
+
+  .app-wordmark {
+    font-family: 'DM Serif Display', serif; font-size: 32px;
+    color: var(--parchment); letter-spacing: 0.02em; margin-bottom: 4px;
+  }
+  .app-tagline { font-size: 13px; color: var(--text-muted); font-weight: 300; letter-spacing: 0.04em; }
+
+  .projects-list { flex: 1; overflow-y: auto; padding: 20px 20px 100px; }
+  @media (min-width: 600px) { .projects-list { padding: 28px 28px 120px; } }
+
+  .projects-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 600px) { .projects-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 900px) { .projects-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+  .project-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 22px 20px 18px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  }
+  .project-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--sage-dim), var(--slate-dim));
+    opacity: 0; transition: opacity var(--transition);
+  }
+  .project-card:hover { background: var(--bg-raised); border-color: var(--border-light); transform: translateY(-1px); }
+  .project-card:hover::before { opacity: 1; }
+  .project-card-title { font-family: 'DM Serif Display', serif; font-size: 19px; color: var(--parchment); margin-bottom: 6px; line-height: 1.3; }
+  .project-card-genre { font-size: 11px; color: var(--sage); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; margin-bottom: 10px; }
+  .project-card-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .project-card-meta { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .meta-pill { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+  .meta-pill svg { opacity: 0.6; }
+  .project-card-delete {
+    position: absolute; top: 14px; right: 14px; background: none; border: none;
+    cursor: pointer; color: var(--text-muted); padding: 4px;
+    border-radius: var(--radius-sm); opacity: 0; transition: opacity var(--transition), color var(--transition), background var(--transition);
+  }
+  .project-card:hover .project-card-delete { opacity: 1; }
+  .project-card-delete:hover { color: var(--danger); background: rgba(160,96,96,0.1); }
+
+  .new-project-card {
+    background: transparent; border: 1px dashed var(--border-light);
+    border-radius: var(--radius-lg); padding: 22px 20px; cursor: pointer;
+    display: flex; align-items: center; gap: 14px; color: var(--text-muted);
+    font-size: 14px; transition: border-color var(--transition), color var(--transition), background var(--transition);
+  }
+  .new-project-card:hover { border-color: var(--sage-dim); color: var(--sage); background: var(--sage-glow); }
+  .new-project-icon { width: 36px; height: 36px; border-radius: 50%; border: 1px dashed currentColor; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .guide-fab {
+    position: fixed; bottom: 28px; right: 24px;
+    background: var(--bg-raised); border: 1px solid var(--border-light);
+    border-radius: 50px; padding: 10px 18px;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--slate); font-size: 13px; font-weight: 500;
+    cursor: pointer; box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    transition: background var(--transition), border-color var(--transition); z-index: 50;
+  }
+  .guide-fab:hover { background: var(--bg-hover); border-color: var(--slate-dim); }
+
+  /* ══ PROJECT SCREEN ══ */
+  #project-screen { background: var(--bg-deep); }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; background: var(--bg-base);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .topbar-back {
+    background: none; border: none; cursor: pointer; color: var(--text-dim);
+    padding: 6px; border-radius: var(--radius-sm); display: flex; align-items: center;
+    transition: color var(--transition), background var(--transition); flex-shrink: 0;
+  }
+  .topbar-back:hover { color: var(--parchment); background: var(--bg-raised); }
+  .topbar-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--parchment); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-guide {
+    background: none; border: none; cursor: pointer; color: var(--slate);
+    padding: 6px; border-radius: var(--radius-sm); display: flex; align-items: center;
+    transition: color var(--transition), background var(--transition); flex-shrink: 0;
+  }
+  .topbar-guide:hover { color: var(--parchment); background: var(--slate-glow); }
+
+  .tab-nav-wrap { position: relative; background: var(--bg-base); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab-nav-wrap::after {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 48px;
+    background: linear-gradient(to right, transparent, var(--bg-base)); pointer-events: none;
+  }
+  .tab-nav { display: flex; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0; background: none; border: none; cursor: pointer;
+    padding: 12px 16px; font-size: 12px; font-weight: 500; color: var(--text-muted);
+    letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 2px solid transparent;
+    transition: color var(--transition), border-color var(--transition); white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab-btn:hover { color: var(--text-dim); }
+  .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
+
+  .tab-panels { flex: 1; overflow: hidden; position: relative; }
+  .tab-panel { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+  .tab-panel.active { display: flex; }
+
+  .panel-inner { padding: 24px 20px 100px; max-width: 780px; width: 100%; margin: 0 auto; }
+  @media (min-width: 600px) { .panel-inner { padding: 32px 32px 120px; } }
+
+  /* ══ CHAPTER EDITOR SCREEN ══ */
+  #chapter-editor-screen { background: var(--bg-deep); }
+
+  .editor-topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; background: var(--bg-base);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .editor-topbar-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .editor-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .editor-chapter-num {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-muted); white-space: nowrap;
+  }
+
+  .editor-title-input {
+    background: none; border: none; border-radius: 0;
+    font-family: 'DM Serif Display', serif; font-size: 18px;
+    color: var(--parchment); padding: 0; width: 100%;
+    outline: none;
+  }
+  .editor-title-input::placeholder { color: var(--text-muted); }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
+    transition: all var(--transition); white-space: nowrap;
+  }
+  .status-draft    { background: var(--slate-glow); color: var(--slate); border: 1px solid rgba(123,143,168,0.2); }
+  .status-progress { background: var(--gold-glow); color: var(--gold); border: 1px solid rgba(180,150,100,0.2); }
+  .status-complete { background: var(--sage-glow); color: var(--sage); border: 1px solid rgba(122,158,126,0.2); }
+
+  .editor-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  .editor-summary-bar {
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    background: var(--bg-base); flex-shrink: 0;
+  }
+  .editor-summary-input {
+    background: none; border: none; border-radius: 0;
+    font-size: 13px; color: var(--text-dim); padding: 0; width: 100%;
+    outline: none; font-style: italic;
+  }
+  .editor-summary-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+  .editor-writing-area {
+    flex: 1; padding: 28px 20px 80px;
+    max-width: 680px; width: 100%; margin: 0 auto;
+  }
+  @media (min-width: 600px) { .editor-writing-area { padding: 40px 40px 100px; } }
+
+  .editor-textarea {
+    background: none; border: none; border-radius: 0;
+    color: var(--parchment); font-family: 'DM Sans', sans-serif;
+    font-size: 16px; line-height: 1.85; padding: 0; width: 100%;
+    outline: none; resize: none; min-height: 60vh;
+    caret-color: var(--sage);
+  }
+  .editor-textarea::placeholder { color: var(--text-muted); }
+
+  .editor-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 10px 20px; background: var(--bg-base);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 10;
+  }
+  .word-count { font-size: 12px; color: var(--text-muted); }
+  .word-count span { color: var(--text-dim); }
+
+  /* ══ CHAPTERS LIST ══ */
+  .chapter-list-item {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px;
+    cursor: pointer; position: relative;
+    transition: background var(--transition), border-color var(--transition);
+    display: flex; align-items: flex-start; gap: 14px;
+  }
+  .chapter-list-item:hover { background: var(--bg-raised); border-color: var(--border-light); }
+
+  .chapter-num-badge {
+    font-family: 'DM Serif Display', serif; font-size: 22px;
+    color: var(--text-muted); line-height: 1; flex-shrink: 0;
+    min-width: 32px; text-align: center; padding-top: 2px;
+  }
+
+  .chapter-list-content { flex: 1; min-width: 0; }
+  .chapter-list-title { font-size: 15px; font-weight: 500; color: var(--parchment); margin-bottom: 4px; }
+  .chapter-list-summary { font-size: 13px; color: var(--text-dim); line-height: 1.5; font-style: italic; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .chapter-list-meta { display: flex; align-items: center; gap: 10px; }
+
+  .chapter-list-actions {
+    display: flex; gap: 6px; flex-shrink: 0;
+    opacity: 0; transition: opacity var(--transition);
+  }
+  .chapter-list-item:hover .chapter-list-actions { opacity: 1; }
+
+  .outline-view { display: none; }
+  .outline-view.active { display: block; }
+  .outline-item {
+    display: flex; gap: 14px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .outline-item:last-child { border-bottom: none; }
+  .outline-num { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--text-muted); min-width: 24px; }
+  .outline-title { font-size: 14px; color: var(--parchment); font-weight: 500; margin-bottom: 2px; }
+  .outline-summary { font-size: 12px; color: var(--text-dim); font-style: italic; }
+
+  .view-toggle {
+    display: flex; background: var(--bg-raised); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .view-toggle-btn {
+    background: none; border: none; cursor: pointer; padding: 6px 12px;
+    font-size: 12px; color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+    transition: all var(--transition);
+  }
+  .view-toggle-btn.active { background: var(--bg-hover); color: var(--parchment); }
+
+  /* ══ CHARACTERS ══ */
+  .characters-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 560px) { .characters-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 860px) { .characters-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+  .character-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px; cursor: pointer;
+    transition: background var(--transition), border-color var(--transition), transform var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .character-card::after {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+  }
+  .character-card.role-protagonist::after { background: var(--sage); }
+  .character-card.role-antagonist::after { background: var(--danger); }
+  .character-card.role-supporting::after { background: var(--slate); }
+  .character-card.role-minor::after { background: var(--text-muted); }
+
+  .character-card:hover { background: var(--bg-raised); border-color: var(--border-light); transform: translateY(-1px); }
+
+  .character-card-delete {
+    position: absolute; top: 12px; right: 12px; background: none; border: none;
+    cursor: pointer; color: var(--text-muted); padding: 4px;
+    border-radius: var(--radius-sm); opacity: 0; transition: opacity var(--transition), color var(--transition);
+  }
+  .character-card:hover .character-card-delete { opacity: 1; }
+  .character-card-delete:hover { color: var(--danger); }
+
+  .character-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--parchment);
+    margin-bottom: 12px; flex-shrink: 0;
+  }
+  .avatar-protagonist { background: rgba(122,158,126,0.2); }
+  .avatar-antagonist  { background: rgba(160,96,96,0.2); }
+  .avatar-supporting  { background: rgba(123,143,168,0.2); }
+  .avatar-minor       { background: rgba(110,101,88,0.2); }
+
+  .character-name { font-family: 'DM Serif Display', serif; font-size: 17px; color: var(--parchment); margin-bottom: 4px; }
+  .character-role-tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 2px 8px; border-radius: 20px; margin-bottom: 10px;
+  }
+  .role-tag-protagonist { background: var(--sage-glow); color: var(--sage); }
+  .role-tag-antagonist  { background: rgba(160,96,96,0.15); color: var(--danger); }
+  .role-tag-supporting  { background: var(--slate-glow); color: var(--slate); }
+  .role-tag-minor       { background: rgba(110,101,88,0.15); color: var(--text-muted); }
+
+  .character-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* character detail modal — full height sheet */
+  .char-detail-modal { max-height: 88vh; }
+  .char-detail-section { margin-bottom: 20px; }
+  .char-detail-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .char-detail-text { font-size: 14px; color: var(--parchment); line-height: 1.65; white-space: pre-wrap; }
+  .char-detail-empty { font-size: 14px; color: var(--text-muted); font-style: italic; }
+
+  /* ══ SHARED COMPONENTS ══ */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+  .section-header-left { display: flex; align-items: center; gap: 12px; }
+  .section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--parchment); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: var(--radius); border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    transition: background var(--transition), color var(--transition);
+  }
+  .btn-primary { background: var(--sage-dim); color: var(--parchment); }
+  .btn-primary:hover { background: var(--sage); }
+  .btn-ghost { background: var(--bg-raised); color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--parchment); border-color: var(--border-light); }
+  .btn-danger { background: rgba(160,96,96,0.15); color: var(--danger); border: 1px solid rgba(160,96,96,0.2); }
+  .btn-danger:hover { background: rgba(160,96,96,0.25); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-icon { padding: 8px; }
+
+  input, textarea, select {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    padding: 10px 14px; width: 100%; outline: none;
+    transition: border-color var(--transition), background var(--transition); -webkit-appearance: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--sage-dim); background: var(--bg-hover); }
+  input::placeholder, textarea::placeholder { color: var(--text-muted); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
+
+  .icon-btn {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted);
+    padding: 5px 7px; display: flex; align-items: center;
+    transition: color var(--transition), background var(--transition);
+  }
+  .icon-btn:hover { color: var(--parchment); background: var(--bg-hover); }
+  .icon-btn.del:hover { color: var(--danger); background: rgba(160,96,96,0.1); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state svg { margin-bottom: 16px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; line-height: 1.6; max-width: 280px; margin: 0 auto; }
+
+  .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  @media (min-width: 600px) { .overview-grid { grid-template-columns: repeat(3,1fr); } }
+  @media (min-width: 900px) { .overview-grid { grid-template-columns: repeat(6,1fr); } }
+  .stat-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .stat-number { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--parchment); line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .overview-desc { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; }
+  .overview-desc-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+  .overview-desc-text { font-size: 14px; color: var(--parchment); line-height: 1.65; white-space: pre-wrap; }
+
+  /* idea cards */
+  .quick-capture { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 24px; }
+  .capture-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .tag-select { flex: 1; min-width: 120px; }
+
+  .idea-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; position: relative; transition: background var(--transition), border-color var(--transition); }
+  .idea-card:hover { background: var(--bg-raised); border-color: var(--border-light); }
+  .idea-card-tag { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; }
+  .tag-scene    { background: rgba(122,158,126,0.15); color: var(--sage); }
+  .tag-dialogue { background: rgba(123,143,168,0.15); color: var(--slate); }
+  .tag-image    { background: rgba(180,150,100,0.15); color: var(--gold); }
+  .tag-character{ background: rgba(140,100,160,0.15); color: #8c64a0; }
+  .tag-plot     { background: rgba(160,96,96,0.15);   color: var(--danger); }
+  .tag-general  { background: rgba(100,100,100,0.15); color: var(--text-muted); }
+  .idea-card-text { font-size: 14px; color: var(--parchment); line-height: 1.6; white-space: pre-wrap; }
+  .idea-card-meta { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+  .idea-card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; opacity: 0; transition: opacity var(--transition); }
+  .idea-card:hover .idea-card-actions { opacity: 1; }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .filter-chip { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; transition: all var(--transition); white-space: nowrap; }
+  .filter-chip:hover { border-color: var(--border-light); color: var(--text-dim); }
+  .filter-chip.active { background: var(--sage-glow); border-color: var(--sage-dim); color: var(--sage); }
+
+  /* modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: flex-end; z-index: 200;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  @media (min-width: 600px) { .modal-overlay { align-items: center; } }
+
+  .modal {
+    background: var(--bg-surface); border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 28px 24px 40px; width: 100%;
+    transform: translateY(30px); transition: transform 0.25s ease;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  @media (min-width: 600px) {
+    .modal { border-radius: var(--radius-lg); max-width: 540px; margin: 0 auto; transform: translateY(10px) scale(0.98); }
+    .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+  }
+
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--parchment); }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: var(--radius-sm); display: flex; align-items: center; transition: color var(--transition); }
+  .modal-close:hover { color: var(--parchment); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* guide */
+  .guide-panel { position: fixed; inset: 0; z-index: 300; display: flex; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
+  .guide-panel.open { opacity: 1; pointer-events: all; }
+  .guide-backdrop { flex: 1; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); }
+  .guide-drawer { width: min(440px,92vw); background: var(--bg-surface); border-left: 1px solid var(--border-light); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }
+  .guide-panel.open .guide-drawer { transform: translateX(0); }
+  .guide-header { padding: 20px 22px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .guide-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--parchment); }
+  .guide-body { flex: 1; overflow-y: auto; padding: 20px 22px 40px; }
+  .guide-section { margin-bottom: 28px; }
+  .guide-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--sage); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .guide-item { margin-bottom: 16px; }
+  .guide-item-title { font-size: 14px; font-weight: 500; color: var(--parchment); margin-bottom: 5px; }
+  .guide-item-text { font-size: 13px; color: var(--text-dim); line-height: 1.65; }
+  .guide-rule { background: var(--bg-raised); border-left: 2px solid var(--sage-dim); padding: 10px 14px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 13px; color: var(--parchment); font-style: italic; margin-bottom: 10px; line-height: 1.5; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg-raised); border: 1px solid var(--border-light); border-radius: 50px; padding: 10px 20px; font-size: 13px; color: var(--parchment); z-index: 500; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); pointer-events: none; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.25s ease forwards; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  select option { background: var(--bg-raised); }
+  /* ══ LOGIN SCREEN ══ */
+  #login-screen {
+    background: var(--bg-deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 28px; text-align: center;
+    min-height: 100vh; min-height: 100dvh;
+  }
+
+  .login-wordmark {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px; color: var(--parchment);
+    letter-spacing: 0.02em; margin-bottom: 8px;
+  }
+
+  .login-tagline {
+    font-size: 14px; color: var(--text-muted);
+    font-weight: 300; letter-spacing: 0.04em;
+    margin-bottom: 48px;
+  }
+
+  .login-box {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 32px 28px;
+    width: 100%; max-width: 380px;
+  }
+
+  .login-box-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px; color: var(--parchment);
+    margin-bottom: 20px;
+  }
+
+  .login-error {
+    background: rgba(160,96,96,0.15); border: 1px solid rgba(160,96,96,0.25);
+    border-radius: var(--radius); padding: 10px 14px;
+    font-size: 13px; color: var(--danger);
+    margin-bottom: 16px; display: none;
+  }
+
+  .login-error.show { display: block; }
+
+  .login-status {
+    font-size: 13px; color: var(--text-muted);
+    margin-top: 16px; min-height: 20px;
+  }
+
+  .sync-indicator {
+    position: fixed; top: 14px; right: 60px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted);
+    z-index: 100; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .sync-indicator.show { opacity: 1; }
+  .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--sage);
+  }
+  .sync-dot.syncing {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ══ RESEARCH ══ */
+  .search-bar {
+    position: relative; margin-bottom: 16px;
+  }
+  .search-bar input {
+    padding-left: 38px;
+  }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); pointer-events: none;
+  }
+
+  .research-entry {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+    transition: border-color var(--transition);
+    cursor: pointer;
+  }
+  .research-entry:hover { border-color: var(--border-light); background: var(--bg-raised); }
+
+  .research-entry-header {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+  }
+  .research-entry-main { flex: 1; min-width: 0; }
+  .research-entry-title {
+    font-size: 14px; font-weight: 500; color: var(--parchment);
+    margin-bottom: 4px; line-height: 1.4;
+  }
+  .research-entry-preview {
+    font-size: 13px; color: var(--text-dim); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .research-entry-meta {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .research-cat-tag {
+    display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 2px 8px; border-radius: 20px;
+    background: var(--gold-glow); color: var(--gold);
+  }
+  .research-source {
+    font-size: 11px; color: var(--text-muted); font-style: italic;
+  }
+  .research-entry-actions {
+    display: flex; gap: 6px; flex-shrink: 0; opacity: 0; transition: opacity var(--transition);
+  }
+  .research-entry:hover .research-entry-actions { opacity: 1; }
+
+  /* ══ VISUAL BOARD ══ */
+  .visual-board {
+    columns: 2; column-gap: 12px;
+  }
+  @media (min-width: 700px) { .visual-board { columns: 3; } }
+  @media (min-width: 1000px) { .visual-board { columns: 4; } }
+
+  .visual-card {
+    break-inside: avoid; margin-bottom: 12px;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; position: relative;
+    transition: border-color var(--transition), transform var(--transition);
+    cursor: pointer;
+  }
+  .visual-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
+
+  .visual-card-img { width: 100%; display: block; object-fit: cover; }
+  .visual-card-caption {
+    padding: 8px 10px; font-size: 12px; color: var(--text-dim); line-height: 1.4;
+  }
+
+  .visual-link-card {
+    break-inside: avoid; margin-bottom: 12px;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; position: relative;
+    transition: border-color var(--transition), background var(--transition);
+    cursor: pointer;
+  }
+  .visual-link-card:hover { border-color: var(--border-light); background: var(--bg-raised); }
+  .visual-link-icon { color: var(--slate); margin-bottom: 8px; }
+  .visual-link-title { font-size: 13px; font-weight: 500; color: var(--parchment); margin-bottom: 4px; line-height: 1.4; }
+  .visual-link-url { font-size: 11px; color: var(--text-muted); word-break: break-all; margin-bottom: 6px; }
+  .visual-link-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  .visual-card-del {
+    position: absolute; top: 8px; right: 8px; background: rgba(21,23,24,0.8);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; color: var(--text-muted); padding: 4px 6px;
+    display: flex; align-items: center; opacity: 0;
+    transition: opacity var(--transition), color var(--transition);
+  }
+  .visual-card:hover .visual-card-del,
+  .visual-link-card:hover .visual-card-del { opacity: 1; }
+  .visual-card-del:hover { color: var(--danger); }
+
+  .visual-add-row {
+    display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .visual-file-label {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: var(--radius);
+    background: var(--bg-raised); color: var(--text-dim);
+    border: 1px solid var(--border); cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+  }
+  .visual-file-label:hover { background: var(--bg-hover); color: var(--parchment); border-color: var(--border-light); }
+
+  /* research detail modal */
+  .research-detail-content {
+    font-size: 14px; color: var(--parchment); line-height: 1.75;
+    white-space: pre-wrap; max-height: 50vh; overflow-y: auto;
+    background: var(--bg-raised); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px; border: 1px solid var(--border);
+  }
+  .research-detail-source {
+    font-size: 12px; color: var(--text-muted); font-style: italic; margin-bottom: 16px;
+  }
+
+  /* image lightbox */
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    padding: 20px;
+  }
+  .lightbox.open { opacity: 1; pointer-events: all; }
+  .lightbox img { max-width: 100%; max-height: 90vh; border-radius: var(--radius); object-fit: contain; }
+  .lightbox-close {
+    position: absolute; top: 20px; right: 20px; background: var(--bg-raised);
+    border: 1px solid var(--border-light); border-radius: 50%; width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--parchment);
+  }
+
+  /* ══ PLOT ══ */
+  .plot-thread-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+    transition: border-color var(--transition);
+  }
+  .plot-thread-card:hover { border-color: var(--border-light); }
+
+  .plot-thread-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; cursor: pointer;
+  }
+  .thread-color-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  }
+  .thread-name {
+    font-size: 15px; font-weight: 500; color: var(--parchment); flex: 1;
+  }
+  .thread-meta { font-size: 12px; color: var(--text-muted); }
+  .thread-chevron {
+    color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0;
+  }
+  .thread-chevron.open { transform: rotate(180deg); }
+
+  .plot-thread-desc {
+    padding: 0 16px 10px; font-size: 13px; color: var(--text-dim);
+    font-style: italic; line-height: 1.5;
+  }
+  .plot-thread-body { padding: 0 16px 12px; border-top: 1px solid var(--border); display: none; }
+  .plot-thread-body.open { display: block; }
+
+  .plot-point-item {
+    display: flex; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    transition: background var(--transition); margin: 0 -4px; padding-left: 4px; border-radius: var(--radius-sm);
+  }
+  .plot-point-item:last-child { border-bottom: none; }
+  .plot-point-item:hover { background: var(--bg-raised); }
+
+  .phase-badge {
+    flex-shrink: 0; border-radius: var(--radius-sm); display: inline-flex;
+    align-items: center; justify-content: center; font-size: 10px; font-weight: 600;
+    margin-top: 2px; padding: 2px 7px; white-space: nowrap; max-width: 90px;
+    overflow: hidden; text-overflow: ellipsis;
+    background: rgba(110,101,88,0.22); color: var(--text-dim);
+  }
+
+  .point-type-tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 1px 6px; border-radius: 10px; margin-left: 6px;
+    vertical-align: middle;
+  }
+  .ptype-seed      { background: rgba(110,101,88,0.22); color: var(--text-muted); }
+  .ptype-root      { background: rgba(122,158,126,0.2); color: var(--sage); }
+  .ptype-storm     { background: rgba(160,96,96,0.2); color: var(--danger); }
+  .ptype-threshold { background: rgba(180,150,100,0.2); color: var(--gold); }
+  .ptype-blossom   { background: rgba(154,120,168,0.2); color: #9a78a8; }
+  .ptype-aftermath { background: rgba(123,143,168,0.2); color: var(--slate); }
+
+  .point-content { flex: 1; min-width: 0; }
+  .point-title { font-size: 14px; color: var(--parchment); margin-bottom: 3px; }
+  .point-desc  { font-size: 12px; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .thread-add-point {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 4px; color: var(--text-muted); cursor: pointer;
+    font-size: 13px; border: none; background: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: color var(--transition);
+  }
+  .thread-add-point:hover { color: var(--sage); }
+
+  .thread-actions { display: flex; gap: 6px; }
+
+  /* ── TIMELINE ── */
+  .timeline-wrap {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+  }
+  .timeline-wrap::-webkit-scrollbar { height: 4px; }
+
+  .timeline-grid {
+    min-width: 600px; display: grid;
+    grid-template-columns: 140px 1fr 1fr 1fr;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .tl-header-cell {
+    padding: 10px 14px; background: var(--bg-raised);
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .tl-header-cell:not(:last-child) { border-right: 1px solid var(--border); }
+  /* act header colors set via inline style in JS */
+
+  .tl-thread-label {
+    padding: 12px 14px; background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .tl-thread-label:last-of-type { border-bottom: none; }
+  .tl-thread-name { font-size: 12px; font-weight: 500; color: var(--parchment); line-height: 1.4; }
+
+  .tl-cell {
+    padding: 10px 10px; background: var(--bg-surface);
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    vertical-align: top; min-height: 60px; position: relative;
+  }
+  .tl-cell:last-child { border-right: none; }
+
+  .tl-point-node {
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 5px 6px; border-radius: var(--radius-sm);
+    margin-bottom: 5px; cursor: pointer;
+    transition: background var(--transition);
+  }
+  .tl-point-node:hover { background: var(--bg-raised); }
+  .tl-point-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  }
+  .tl-point-title { font-size: 12px; color: var(--parchment); line-height: 1.4; }
+
+  .tl-empty { font-size: 11px; color: var(--text-muted); font-style: italic; padding: 4px 6px; }
+
+  /* color swatches */
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .color-swatch {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: border-color var(--transition), transform var(--transition);
+  }
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.selected { border-color: var(--parchment); }
+
+  /* phases bar */
+  .phases-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+  .phase-chip {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text-dim);
+    cursor: pointer; transition: all var(--transition); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Sans', sans-serif;
+    border: none;
+  }
+  .phase-chip:hover { background: var(--bg-hover); color: var(--parchment); }
+  .phase-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); flex-shrink: 0; }
+  .phase-chip-add {
+    background: transparent; border: 1px dashed var(--border-light);
+    border-radius: 20px; padding: 5px 14px; font-size: 12px; color: var(--text-muted);
+    cursor: pointer; transition: all var(--transition); white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .phase-chip-add:hover { border-color: var(--sage-dim); color: var(--sage); }
+
+  .phases-empty-hint {
+    font-size: 13px; color: var(--text-muted); font-style: italic; margin-bottom: 16px;
+  }
+
+  /* point detail */
+  .point-detail-act { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+
+</style>
+</head>
+<body>
+<div id="app">
+<div class="sync-indicator" id="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Saving...</span></div>
+
+  <!-- ══ LOGIN SCREEN ══ -->
+  <div id="login-screen" class="screen active">
+    <div class="login-wordmark">Fallow</div>
+    <div class="login-tagline">where stories take root</div>
+    <div class="login-box">
+      <div class="login-box-title">Sign in</div>
+      <div class="login-error" id="login-error"></div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;" onclick="signIn()">Sign in</button>
+      <div class="login-status" id="login-status"></div>
+    </div>
+  </div>
+
+
+<!-- ══ PROJECTS SCREEN ══ -->
+<div id="projects-screen" class="screen">
+  <div class="projects-header" style="display:flex;align-items:flex-end;justify-content:space-between;">
+    <div>
+      <div class="app-wordmark">Fallow</div>
+      <div class="app-tagline">where stories take root</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="signOut()" style="margin-bottom:4px;flex-shrink:0;">Sign out</button>
+  </div>
+  <div class="projects-list">
+    <div class="projects-grid" id="projects-grid"></div>
+  </div>
+  <button class="guide-fab" onclick="openGuide()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+    Writing Guide
+  </button>
+</div>
+
+<!-- ══ PROJECT SCREEN ══ -->
+<div id="project-screen" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="goHome()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="topbar-title" id="project-title-bar">Project</div>
+    <button class="topbar-guide" onclick="openGuide()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+    </button>
+  </div>
+  <div class="tab-nav-wrap">
+    <div class="tab-nav" id="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab('ideas')">Ideas</button>
+      <button class="tab-btn" onclick="switchTab('chapters')">Chapters</button>
+      <button class="tab-btn" onclick="switchTab('characters')">Characters</button>
+      <button class="tab-btn" onclick="switchTab('plot')">Plot</button>
+      <button class="tab-btn" onclick="switchTab('research')">Research</button>
+      <button class="tab-btn" onclick="switchTab('visual')">Visuals</button>
+    </div>
+  </div>
+  <div class="tab-panels">
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="panel-overview">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-title" id="overview-project-name">Project</div>
+          <button class="btn btn-ghost btn-sm" onclick="openEditProject()">Edit</button>
+        </div>
+        <div class="overview-grid" id="overview-stats"></div>
+        <div class="overview-desc"><div class="overview-desc-label">Premise</div><div class="overview-desc-text" id="overview-premise">—</div></div>
+        <div class="overview-desc"><div class="overview-desc-label">Genre &amp; Setting</div><div class="overview-desc-text" id="overview-genre-setting">—</div></div>
+        <div class="overview-desc"><div class="overview-desc-label">Notes</div><div class="overview-desc-text" id="overview-notes">—</div></div>
+      </div>
+    </div>
+
+    <!-- IDEAS -->
+    <div class="tab-panel" id="panel-ideas">
+      <div class="panel-inner">
+        <div class="section-header"><div class="section-title">Ideas</div></div>
+        <div class="quick-capture">
+          <textarea id="idea-input" placeholder="Capture an idea, image, line of dialogue, fragment — anything worth keeping..." rows="3"></textarea>
+          <div class="capture-row">
+            <select class="tag-select" id="idea-tag">
+              <option value="general">General</option>
+              <option value="scene">Scene</option>
+              <option value="dialogue">Dialogue</option>
+              <option value="image">Image / Atmosphere</option>
+              <option value="character">Character</option>
+              <option value="plot">Plot</option>
+            </select>
+            <button class="btn btn-primary" onclick="saveIdea()">Save</button>
+          </div>
+        </div>
+        <div class="filter-row" id="idea-filters">
+          <div class="filter-chip active" data-tag="all" onclick="filterIdeas('all',this)">All</div>
+          <div class="filter-chip" data-tag="scene" onclick="filterIdeas('scene',this)">Scene</div>
+          <div class="filter-chip" data-tag="dialogue" onclick="filterIdeas('dialogue',this)">Dialogue</div>
+          <div class="filter-chip" data-tag="image" onclick="filterIdeas('image',this)">Image</div>
+          <div class="filter-chip" data-tag="character" onclick="filterIdeas('character',this)">Character</div>
+          <div class="filter-chip" data-tag="plot" onclick="filterIdeas('plot',this)">Plot</div>
+          <div class="filter-chip" data-tag="general" onclick="filterIdeas('general',this)">General</div>
+        </div>
+        <div id="ideas-list"></div>
+      </div>
+    </div>
+
+    <!-- CHAPTERS -->
+    <div class="tab-panel" id="panel-chapters">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-header-left">
+            <div class="section-title">Chapters</div>
+            <div class="view-toggle">
+              <button class="view-toggle-btn active" id="view-list-btn" onclick="setChapterView('list')">List</button>
+              <button class="view-toggle-btn" id="view-outline-btn" onclick="setChapterView('outline')">Outline</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-ghost btn-sm" onclick="exportManuscript()">Export all</button>
+            <button class="btn btn-primary btn-sm" onclick="openNewChapter()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              New
+            </button>
+          </div>
+        </div>
+        <div id="chapters-list-view"></div>
+        <div class="outline-view" id="chapters-outline-view"></div>
+      </div>
+    </div>
+
+    <!-- CHARACTERS -->
+    <div class="tab-panel" id="panel-characters">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-title">Characters</div>
+          <button class="btn btn-primary btn-sm" onclick="openNewCharacter()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            New
+          </button>
+        </div>
+        <div class="characters-grid" id="characters-grid"></div>
+      </div>
+    </div>
+
+    <!-- PLOT -->
+    <div class="tab-panel" id="panel-plot">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-header-left">
+            <div class="section-title">Plot</div>
+            <div class="view-toggle">
+              <button class="view-toggle-btn active" id="plot-view-threads-btn" onclick="setPlotView('threads')">Threads</button>
+              <button class="view-toggle-btn" id="plot-view-timeline-btn" onclick="setPlotView('timeline')">Timeline</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openNewThread()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            New thread
+          </button>
+        </div>
+
+        <!-- PHASE MANAGER -->
+        <div class="phases-bar" id="phases-bar"></div>
+
+        <!-- THREADS VIEW -->
+        <div id="plot-threads-view">
+          <div id="plot-threads-list"></div>
+        </div>
+
+        <!-- TIMELINE VIEW -->
+        <div id="plot-timeline-view" style="display:none;">
+          <div class="timeline-wrap">
+            <div class="timeline-grid" id="timeline-grid"></div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:14px;text-align:center;">Tap any point to view details &mdash; scroll horizontally if needed</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESEARCH -->
+    <div class="tab-panel" id="panel-research">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-title">Research</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="exportAllResearch()">Export all</button>
+            <button class="btn btn-primary btn-sm" onclick="openNewResearch()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              New entry
+            </button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="research-search" placeholder="Search entries..." oninput="renderResearch()">
+        </div>
+        <div class="filter-row" id="research-filters">
+          <div class="filter-chip active" data-cat="all" onclick="filterResearch('all',this)">All</div>
+          <div class="filter-chip" data-cat="Herbs &amp; Plants" onclick="filterResearch('Herbs &amp; Plants',this)">Herbs &amp; Plants</div>
+          <div class="filter-chip" data-cat="Medicine &amp; Healing" onclick="filterResearch('Medicine &amp; Healing',this)">Medicine</div>
+          <div class="filter-chip" data-cat="Daily Life" onclick="filterResearch('Daily Life',this)">Daily Life</div>
+          <div class="filter-chip" data-cat="Religion &amp; Belief" onclick="filterResearch('Religion &amp; Belief',this)">Religion</div>
+          <div class="filter-chip" data-cat="Historical Context" onclick="filterResearch('Historical Context',this)">History</div>
+          <div class="filter-chip" data-cat="Geography &amp; Setting" onclick="filterResearch('Geography &amp; Setting',this)">Geography</div>
+          <div class="filter-chip" data-cat="People &amp; Customs" onclick="filterResearch('People &amp; Customs',this)">People</div>
+          <div class="filter-chip" data-cat="Other" onclick="filterResearch('Other',this)">Other</div>
+        </div>
+        <div id="research-list"></div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="tab-panel" id="panel-visual">
+      <div class="panel-inner">
+        <div class="section-header">
+          <div class="section-title">Visuals</div>
+        </div>
+        <div class="visual-add-row">
+          <label class="visual-file-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            Add image
+            <input type="file" id="visual-file-input" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+          </label>
+          <button class="btn btn-ghost" onclick="openAddLink()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            Add link
+          </button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Images are stored locally in your browser. Keep files small for best performance.</p>
+        <div class="visual-board" id="visual-board"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ CHAPTER EDITOR SCREEN ══ -->
+<div id="chapter-editor-screen" class="screen">
+  <div class="editor-topbar">
+    <div class="editor-topbar-left">
+      <button class="topbar-back" onclick="closeChapterEditor()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="editor-chapter-num" id="editor-chapter-num">Chapter 1</span>
+      <input class="editor-title-input" id="editor-title" placeholder="Chapter title (optional)" oninput="autoSaveChapter()">
+    </div>
+    <div class="editor-topbar-right">
+      <button class="status-badge status-draft" id="editor-status-btn" onclick="cycleStatus()"></button>
+      <button class="topbar-guide" onclick="openGuide()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="editor-summary-bar">
+    <input class="editor-summary-input" id="editor-summary" placeholder="One-line summary of this chapter..." oninput="autoSaveChapter()">
+  </div>
+  <div class="editor-body">
+    <div class="editor-writing-area">
+      <textarea class="editor-textarea" id="editor-textarea" placeholder="Begin writing..." oninput="autoSaveChapter(); updateWordCount()"></textarea>
+    </div>
+  </div>
+  <div class="editor-footer">
+    <div class="word-count">Words: <span id="word-count-display">0</span></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="exportCurrentChapter()">Export</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentChapter()">Delete</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end #app -->
+
+<!-- ══ MODALS ══ -->
+
+<!-- New/Edit Project -->
+<div class="modal-overlay" id="new-project-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="project-modal-title">New Project</div>
+      <button class="modal-close" onclick="closeModal('new-project-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Title</label><input type="text" id="proj-title" placeholder="The name of your book"></div>
+    <div class="field"><label>Genre</label><input type="text" id="proj-genre" placeholder="e.g. Historical fiction"></div>
+    <div class="field"><label>Setting</label><input type="text" id="proj-setting" placeholder="Time, place, world"></div>
+    <div class="field"><label>Premise</label><textarea id="proj-premise" rows="4" placeholder="What is this book about?"></textarea></div>
+    <div class="field"><label>Notes</label><textarea id="proj-notes" rows="3" placeholder="Anything else worth keeping at the top level..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('new-project-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Idea -->
+<div class="modal-overlay" id="edit-idea-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Idea</div>
+      <button class="modal-close" onclick="closeModal('edit-idea-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Tag</label>
+      <select id="edit-idea-tag">
+        <option value="general">General</option><option value="scene">Scene</option>
+        <option value="dialogue">Dialogue</option><option value="image">Image / Atmosphere</option>
+        <option value="character">Character</option><option value="plot">Plot</option>
+      </select>
+    </div>
+    <div class="field"><label>Idea</label><textarea id="edit-idea-text" rows="6"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('edit-idea-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="updateIdea()">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit Character -->
+<div class="modal-overlay" id="character-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="char-modal-title">New Character</div>
+      <button class="modal-close" onclick="closeModal('character-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Name</label><input type="text" id="char-name" placeholder="Full name"></div>
+    <div class="field"><label>Role</label>
+      <select id="char-role">
+        <option value="protagonist">Protagonist</option>
+        <option value="antagonist">Antagonist</option>
+        <option value="supporting">Supporting</option>
+        <option value="minor">Minor</option>
+      </select>
+    </div>
+    <div class="field"><label>Physical description</label><textarea id="char-physical" rows="3" placeholder="Appearance, age, how they carry themselves..."></textarea></div>
+    <div class="field"><label>Personality &amp; voice</label><textarea id="char-personality" rows="3" placeholder="How they think, speak, behave..."></textarea></div>
+    <div class="field"><label>Backstory</label><textarea id="char-backstory" rows="3" placeholder="Where they come from, what shaped them..."></textarea></div>
+    <div class="field"><label>Arc</label><textarea id="char-arc" rows="3" placeholder="How do they change across the story?"></textarea></div>
+    <div class="field"><label>Relationships</label><textarea id="char-relationships" rows="2" placeholder="Key connections to other characters..."></textarea></div>
+    <div class="field"><label>Notes</label><textarea id="char-notes" rows="2" placeholder="Anything else..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('character-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCharacter()">Save Character</button>
+    </div>
+  </div>
+</div>
+
+<!-- Character Detail View -->
+<div class="modal-overlay" id="character-detail-modal">
+  <div class="modal char-detail-modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="detail-char-name">Character</div>
+        <div id="detail-char-role-tag"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('character-detail-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div id="detail-char-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="exportCharacter()">Export</button>
+      <button class="btn btn-ghost" onclick="editCharacterFromDetail()">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit Thread -->
+<div class="modal-overlay" id="thread-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="thread-modal-title">New Plot Thread</div>
+      <button class="modal-close" onclick="closeModal('thread-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Thread name</label><input type="text" id="thread-name" placeholder="e.g. Mara's healing, The soldier's desertion..."></div>
+    <div class="field">
+      <label>Colour</label>
+      <div class="color-swatches" id="thread-color-swatches">
+        <div class="color-swatch selected" data-color="#7a9e7e" style="background:#7a9e7e;" onclick="selectThreadColor('#7a9e7e',this)"></div>
+        <div class="color-swatch" data-color="#7b8fa8" style="background:#7b8fa8;" onclick="selectThreadColor('#7b8fa8',this)"></div>
+        <div class="color-swatch" data-color="#b49664" style="background:#b49664;" onclick="selectThreadColor('#b49664',this)"></div>
+        <div class="color-swatch" data-color="#9a78a8" style="background:#9a78a8;" onclick="selectThreadColor('#9a78a8',this)"></div>
+        <div class="color-swatch" data-color="#a07878" style="background:#a07878;" onclick="selectThreadColor('#a07878',this)"></div>
+        <div class="color-swatch" data-color="#78a0a0" style="background:#78a0a0;" onclick="selectThreadColor('#78a0a0',this)"></div>
+        <div class="color-swatch" data-color="#a89e6e" style="background:#a89e6e;" onclick="selectThreadColor('#a89e6e',this)"></div>
+        <div class="color-swatch" data-color="#889098" style="background:#889098;" onclick="selectThreadColor('#889098',this)"></div>
+      </div>
+      <input type="hidden" id="thread-color" value="#7a9e7e">
+    </div>
+    <div class="field"><label>Description</label><textarea id="thread-desc" rows="3" placeholder="What does this storyline track? What is its emotional or narrative purpose?"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('thread-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveThread()">Save Thread</button>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit Plot Point -->
+<div class="modal-overlay" id="point-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="point-modal-title">New Plot Point</div>
+      <button class="modal-close" onclick="closeModal('point-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Title</label><input type="text" id="point-title" placeholder="A brief name for this moment..."></div>
+    <div class="field"><label>Phase</label>
+      <select id="point-phase">
+        <option value="">— select a phase —</option>
+      </select>
+    </div>
+    <div class="field"><label>Type</label>
+      <select id="point-type">
+        <option value="seed">Seed — a quiet beginning, something planted</option>
+        <option value="root">Root — deepening, character taking hold</option>
+        <option value="storm">Storm — conflict, rupture, crisis</option>
+        <option value="threshold">Threshold — a crossing point, no going back</option>
+        <option value="blossom">Blossom — growth, connection, revelation</option>
+        <option value="aftermath">Aftermath — consequence, settling, resolution</option>
+      </select>
+    </div>
+    <div class="field"><label>Description</label><textarea id="point-desc" rows="5" placeholder="What happens? What changes? What does this moment mean for the character and the story?"></textarea></div>
+    <input type="hidden" id="point-thread-id">
+    <input type="hidden" id="point-edit-id">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('point-modal')">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="point-delete-btn" onclick="deletePointFromModal()" style="display:none;">Delete</button>
+      <button class="btn btn-primary" onclick="savePoint()">Save Point</button>
+    </div>
+  </div>
+</div>
+
+<!-- New/Edit Research Entry -->
+<div class="modal-overlay" id="research-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="research-modal-title">New Research Entry</div>
+      <button class="modal-close" onclick="closeModal('research-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>Title</label><input type="text" id="research-title" placeholder="e.g. Yarrow — medicinal uses, Medieval well construction..."></div>
+    <div class="field"><label>Category</label>
+      <select id="research-cat">
+        <option>Herbs &amp; Plants</option>
+        <option>Medicine &amp; Healing</option>
+        <option>Daily Life</option>
+        <option>Religion &amp; Belief</option>
+        <option>Historical Context</option>
+        <option>Geography &amp; Setting</option>
+        <option>People &amp; Customs</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="research-content" rows="7" placeholder="Your research notes, copied text, observations — as much detail as you need..."></textarea></div>
+    <div class="field"><label>Source (optional)</label><input type="text" id="research-source" placeholder="Book title, website, article name..."></div>
+    <input type="hidden" id="research-edit-id">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('research-modal')">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="research-delete-btn" onclick="deleteResearchFromModal()" style="display:none;">Delete</button>
+      <button class="btn btn-primary" onclick="saveResearch()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Research Detail View -->
+<div class="modal-overlay" id="research-detail-modal">
+  <div class="modal" style="max-height:90vh;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="rd-title"></div>
+        <div id="rd-cat-tag" style="margin-top:4px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('research-detail-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="research-detail-content" id="rd-content"></div>
+    <div class="research-detail-source" id="rd-source"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="exportResearchEntry()">Export</button>
+      <button class="btn btn-ghost" onclick="editResearchFromDetail()">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Link -->
+<div class="modal-overlay" id="link-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Link</div>
+      <button class="modal-close" onclick="closeModal('link-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field"><label>URL</label><input type="url" id="link-url" placeholder="https://..."></div>
+    <div class="field"><label>Title</label><input type="text" id="link-title" placeholder="A name for this link"></div>
+    <div class="field"><label>Description (optional)</label><textarea id="link-desc" rows="3" placeholder="Why is this relevant? What does it show?"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('link-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLink()">Add Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image caption modal -->
+<div class="modal-overlay" id="caption-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Caption</div>
+      <button class="modal-close" onclick="closeModal('caption-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <img id="caption-preview" style="width:100%;border-radius:var(--radius);margin-bottom:16px;max-height:200px;object-fit:cover;">
+    <div class="field"><label>Caption (optional)</label><input type="text" id="caption-text" placeholder="What is this? Why does it belong here?"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('caption-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmImageSave()">Add to board</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="">
+  <div class="lightbox-close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></div>
+</div>
+
+<!-- New/Edit Phase -->
+<div class="modal-overlay" id="phase-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="phase-modal-title">New Phase</div>
+      <button class="modal-close" onclick="closeModal('phase-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="field">
+      <label>Phase name</label>
+      <input type="text" id="phase-name" placeholder="e.g. Before the wedding, Into the woods, The healing years...">
+    </div>
+    <input type="hidden" id="phase-edit-id">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('phase-modal')">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="phase-delete-btn" onclick="deletePhaseFromModal()" style="display:none;">Delete</button>
+      <button class="btn btn-primary" onclick="savePhase()">Save Phase</button>
+    </div>
+  </div>
+</div>
+
+<!-- Writing Guide -->
+<div class="guide-panel" id="guide-panel">
+  <div class="guide-backdrop" onclick="closeGuide()"></div>
+  <div class="guide-drawer">
+    <div class="guide-header">
+      <div class="guide-title">Writing Guide</div>
+      <button class="modal-close" onclick="closeGuide()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="guide-body">
+      <div class="guide-section">
+        <div class="guide-section-title">First Drafts</div>
+        <div class="guide-rule">"Get it down, then get it right. The first draft is just you telling yourself the story."</div>
+        <div class="guide-item"><div class="guide-item-title">Write forward, not backward</div><div class="guide-item-text">Resist the urge to edit as you go. A finished messy draft is infinitely more useful than a polished half. Fix sentences in revision — you can't revise a blank page.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Silence your inner critic</div><div class="guide-item-text">The critical mind and the creative mind cannot fully occupy the same space. Draft with the door closed. Invite the critic in only once the story exists.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Quantity enables quality</div><div class="guide-item-text">Write more than you need. Scenes, fragments, alternate versions. You will cut most of it — and in doing so, find the book underneath.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Scene Construction</div>
+        <div class="guide-item"><div class="guide-item-title">Every scene needs a turn</div><div class="guide-item-text">Something should change within a scene — a relationship, a belief, a power balance. If a character ends a scene in exactly the same position they began it, the scene may not be earning its place.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Enter late, leave early</div><div class="guide-item-text">Begin scenes as close to the significant moment as possible. End them before the natural conclusion. The reader fills the gap — and that act of filling is where they become invested.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Ground in the senses first</div><div class="guide-item-text">Before abstract emotion or reflection, give the reader something physical to inhabit: a smell, a texture, a sound. Sensation is the fastest route into a scene.</div></div>
+        <div class="guide-item"><div class="guide-item-title">The iceberg principle</div><div class="guide-item-text">What a scene withholds matters as much as what it shows. The subtext — what characters don't say, don't do, don't acknowledge — is often where the real meaning lives.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Character</div>
+        <div class="guide-item"><div class="guide-item-title">Want and need are different things</div><div class="guide-item-text">A character's want drives the plot. Their need — what they must reckon with internally — drives the arc. The most satisfying stories let these collide.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Show agency, not just suffering</div><div class="guide-item-text">Even a character in an impossible situation makes choices. Showing those choices — however small — is what makes a character feel alive rather than acted upon.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Contradiction is truth</div><div class="guide-item-text">Real people contain opposing impulses. A character who is only one thing will feel thin. Allow your characters to surprise even you.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Secondary characters deserve interiority</div><div class="guide-item-text">Even characters who exist to serve the plot have lives, histories, and opinions that exist off the page. Knowing these — even if they never appear — makes them feel three-dimensional.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Prose &amp; Voice</div>
+        <div class="guide-item"><div class="guide-item-title">Trust the reader</div><div class="guide-item-text">State something once and trust it landed. Resist the urge to explain, underline, or repeat. The reader is on your side — let them do some of the work.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Vary sentence rhythm</div><div class="guide-item-text">Short sentences create urgency and emphasis. Longer sentences slow the reader, allow thought to unfold, create a sense of being held inside a moment. The contrast between them is where rhythm lives.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Earn your adjectives</div><div class="guide-item-text">One precise, unexpected modifier does more than three familiar ones. "The cold grey morning" tells us nothing. "The morning that smelled of last night's fire" puts us somewhere specific.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Avoid throat-clearing</div><div class="guide-item-text">Watch for sentences that exist only to set up the next sentence. Cut to the actual thought directly.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Dialogue</div>
+        <div class="guide-item"><div class="guide-item-title">People talk past each other</div><div class="guide-item-text">Real conversation is rarely direct. Characters answer different questions than the ones asked, pursue their own agenda, deflect. Dialogue that is too efficient often feels theatrical.</div></div>
+        <div class="guide-item"><div class="guide-item-title">What is not said</div><div class="guide-item-text">The most powerful moments in dialogue are often the silences — what a character cannot bring themselves to say, or says through action rather than words.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Said is invisible</div><div class="guide-item-text">The word "said" disappears when reading. Reach for alternatives only when the manner of speaking is genuinely meaningful.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Structure &amp; Pacing</div>
+        <div class="guide-item"><div class="guide-item-title">The three-act spine</div><div class="guide-item-text">Most stories follow: a world disrupted, a struggle through the disruption, and a resolution (however partial). Knowing where your story sits on this spine helps when you lose your footing.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Pace with intention</div><div class="guide-item-text">Slow scenes give weight to fast ones. If everything moves at the same speed, the reader loses their sense of what matters.</div></div>
+        <div class="guide-item"><div class="guide-item-title">End on momentum, not resolution</div><div class="guide-item-text">Chapter endings that resolve completely invite the reader to put the book down. Ending on a question, a tension, or an image that demands following keeps the pages turning.</div></div>
+      </div>
+      <div class="guide-section">
+        <div class="guide-section-title">Revision</div>
+        <div class="guide-item"><div class="guide-item-title">Read it aloud</div><div class="guide-item-text">The ear catches what the eye misses. Awkward rhythm, unintentional repetition, sentences that are grammatically correct but impossible to read — these reveal themselves instantly when spoken.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Cut the first paragraph</div><div class="guide-item-text">Most chapters begin one paragraph too early. The real opening is usually the second paragraph. Try it — it works more often than it should.</div></div>
+        <div class="guide-item"><div class="guide-item-title">Kill your darlings, selectively</div><div class="guide-item-text">The question is whether the passage serves the story, not whether you love it. Keep what earns its place.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ SUPABASE ══
+const SUPABASE_URL = 'https://xzhjdnznpvcyxinylzox.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mNtfcHSraB1kcvadA9ihnw_yskKGZt4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══ STATE ══
+let state = {
+  projects: [],
+  currentProjectId: null,
+  currentTab: 'overview',
+  ideaFilter: 'all',
+  editingIdeaId: null,
+  editingProjectId: null,
+  editingChapterId: null,
+  editingCharacterId: null,
+  viewingCharacterId: null,
+  editingThreadId: null,
+  editingPhaseId: null,
+  chapterView: 'list',
+  autoSaveTimer: null,
+  syncTimer: null,
+  userId: null,
+  rowId: null,
+};
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ══ SYNC ══
+function showSyncIndicator(label) {
+  const el = document.getElementById('sync-indicator');
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  lbl.textContent = label;
+  dot.classList.toggle('syncing', label === 'Saving…');
+  el.classList.add('show');
+  if (label !== 'Saving…') setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+async function saveToCloud() {
+  if (!state.userId) return;
+  showSyncIndicator('Saving…');
+  try {
+    const payload = JSON.stringify({ userId: state.userId, projects: state.projects });
+    if (state.rowId) {
+      const { error } = await sb.from('projects').update({ data: payload }).eq('id', state.rowId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await sb.from('projects').insert([{ data: payload }]).select();
+      if (error) throw error;
+      if (data && data[0]) state.rowId = data[0].id;
+    }
+    showSyncIndicator('Saved');
+    try { localStorage.setItem('fallow_v1', JSON.stringify(state.projects)); } catch(e) {}
+    try { localStorage.setItem('fallow_rowid', String(state.rowId)); } catch(e) {}
+  } catch(err) {
+    console.error('Cloud save error:', err);
+    showSyncIndicator('Offline — saved locally');
+    try { localStorage.setItem('fallow_v1', JSON.stringify(state.projects)); } catch(e) {}
+  }
+}
+
+function save() {
+  // local save immediately
+  try { localStorage.setItem('fallow_v1', JSON.stringify(state.projects)); } catch(e) {}
+  // debounced cloud save
+  clearTimeout(state.syncTimer);
+  state.syncTimer = setTimeout(saveToCloud, 1200);
+}
+
+async function loadFromCloud() {
+  if (!state.userId) return false;
+  try {
+    // try cached row id first
+    const cachedRowId = localStorage.getItem('fallow_rowid');
+    let row = null;
+    if (cachedRowId) {
+      const { data } = await sb.from('projects').select('*').eq('id', cachedRowId).single();
+      if (data) row = data;
+    }
+    // otherwise scan for this user's row
+    if (!row) {
+      const { data } = await sb.from('projects').select('*');
+      if (data) {
+        for (const r of data) {
+          try {
+            const parsed = JSON.parse(r.data);
+            if (parsed.userId === state.userId) { row = r; break; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (row && row.data) {
+      state.rowId = row.id;
+      const parsed = JSON.parse(row.data);
+      state.projects = parsed.projects || parsed; // handle both formats
+      try { localStorage.setItem('fallow_v1', JSON.stringify(state.projects)); } catch(e) {}
+      try { localStorage.setItem('fallow_rowid', String(state.rowId)); } catch(e) {}
+      return true;
+    }
+  } catch(err) {
+    console.error('Cloud load error:', err);
+  }
+  return false;
+}
+
+function loadLocal() {
+  try {
+    const r = localStorage.getItem('fallow_v1');
+    if (r) { state.projects = JSON.parse(r); return true; }
+  } catch(e) {}
+  return false;
+}
+
+// ══ AUTH ══
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const statusEl = document.getElementById('login-status');
+  errEl.classList.remove('show');
+  statusEl.textContent = 'Signing in…';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.classList.add('show');
+    statusEl.textContent = '';
+    return;
+  }
+  state.userId = data.user.id;
+  statusEl.textContent = 'Loading your projects…';
+  const fromCloud = await loadFromCloud();
+  if (!fromCloud) {
+    // check for local data to migrate
+    const hasLocal = loadLocal();
+    if (hasLocal && state.projects.length) {
+      showToast('Migrating local data to cloud…');
+      await saveToCloud();
+    }
+  }
+  statusEl.textContent = '';
+  showScreen('projects-screen');
+  renderProjects();
+}
+
+async function checkSession() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    state.userId = data.session.user.id;
+    const fromCloud = await loadFromCloud();
+    if (!fromCloud) loadLocal();
+    showScreen('projects-screen');
+    renderProjects();
+  } else {
+    showScreen('login-screen');
+  }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  state.userId = null;
+  state.rowId = null;
+  state.projects = [];
+  state.currentProjectId = null;
+  showScreen('login-screen');
+  showToast('Signed out');
+}
+
+
+// ══ NAVIGATION ══
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { state.currentProjectId = null; showScreen('projects-screen'); renderProjects(); }
+
+function openProject(id) {
+  state.currentProjectId = id;
+  const p = getProject(id);
+  document.getElementById('project-title-bar').textContent = p.title;
+  switchTab('overview');
+  showScreen('project-screen');
+  renderOverview();
+}
+
+function switchTab(name) {
+  state.currentTab = name;
+  const tabs = ['overview','ideas','chapters','characters','plot','research','visual'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const isActive = tabs[i] === name;
+    b.classList.toggle('active', isActive);
+    if (isActive) b.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'ideas') renderIdeas();
+  if (name === 'overview') renderOverview();
+  if (name === 'chapters') renderChapters();
+  if (name === 'characters') renderCharacters();
+  if (name === 'plot') renderPlot();
+  if (name === 'research') renderResearch();
+  if (name === 'visual') renderVisuals();
+}
+
+// ══ PROJECTS ══
+function getProject(id) { return state.projects.find(p => p.id === id); }
+
+function renderProjects() {
+  const grid = document.getElementById('projects-grid');
+  grid.innerHTML = '';
+  state.projects.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'project-card fade-in';
+    card.onclick = (e) => { if (e.target.closest('.project-card-delete')) return; openProject(p.id); };
+    const ic = (p.ideas||[]).length, cc = (p.chapters||[]).length;
+    card.innerHTML = `
+      <button class="project-card-delete" onclick="deleteProject('${p.id}',event)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+      ${p.genre ? `<div class="project-card-genre">${escHtml(p.genre)}</div>` : ''}
+      <div class="project-card-title">${escHtml(p.title)}</div>
+      ${p.premise ? `<div class="project-card-desc">${escHtml(p.premise)}</div>` : ''}
+      <div class="project-card-meta">
+        <span class="meta-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>${ic} idea${ic!==1?'s':''}</span>
+        <span class="meta-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>${cc} chapter${cc!==1?'s':''}</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const nc = document.createElement('div');
+  nc.className = 'new-project-card';
+  nc.onclick = openNewProjectModal;
+  nc.innerHTML = `<div class="new-project-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div><span>New project</span>`;
+  grid.appendChild(nc);
+}
+
+function openNewProjectModal() {
+  state.editingProjectId = null;
+  document.getElementById('project-modal-title').textContent = 'New Project';
+  ['proj-title','proj-genre','proj-setting','proj-premise','proj-notes'].forEach(id => document.getElementById(id).value = '');
+  openModal('new-project-modal');
+}
+
+function openEditProject() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  state.editingProjectId = p.id;
+  document.getElementById('project-modal-title').textContent = 'Edit Project';
+  document.getElementById('proj-title').value = p.title||'';
+  document.getElementById('proj-genre').value = p.genre||'';
+  document.getElementById('proj-setting').value = p.setting||'';
+  document.getElementById('proj-premise').value = p.premise||'';
+  document.getElementById('proj-notes').value = p.notes||'';
+  openModal('new-project-modal');
+}
+
+function saveProject() {
+  const title = document.getElementById('proj-title').value.trim();
+  if (!title) { showToast('Please add a title'); return; }
+  if (state.editingProjectId) {
+    const p = getProject(state.editingProjectId);
+    p.title = title; p.genre = document.getElementById('proj-genre').value.trim();
+    p.setting = document.getElementById('proj-setting').value.trim();
+    p.premise = document.getElementById('proj-premise').value.trim();
+    p.notes = document.getElementById('proj-notes').value.trim();
+    save(); closeModal('new-project-modal');
+    document.getElementById('project-title-bar').textContent = p.title;
+    renderOverview(); showToast('Project updated');
+  } else {
+    const p = { id:uid(), title, genre:document.getElementById('proj-genre').value.trim(), setting:document.getElementById('proj-setting').value.trim(), premise:document.getElementById('proj-premise').value.trim(), notes:document.getElementById('proj-notes').value.trim(), ideas:[], chapters:[], characters:[], plotThreads:[], research:[], visuals:[], createdAt:Date.now() };
+    state.projects.push(p); save(); closeModal('new-project-modal'); openProject(p.id); showToast('Project created');
+  }
+}
+
+function deleteProject(id, e) {
+  e.stopPropagation();
+  const p = getProject(id); if (!p) return;
+  if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
+  state.projects = state.projects.filter(pr => pr.id !== id);
+  save(); renderProjects(); showToast('Project deleted');
+}
+
+// ══ OVERVIEW ══
+function renderOverview() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  document.getElementById('overview-project-name').textContent = p.title;
+  const totalWords = (p.chapters||[]).reduce((acc, ch) => acc + wordCount(ch.content||''), 0);
+  const stats = [
+    { n:(p.ideas||[]).length, label:'Ideas' },
+    { n:(p.chapters||[]).length, label:'Chapters' },
+    { n:(p.characters||[]).length, label:'Characters' },
+    { n:(p.research||[]).length, label:'Research' },
+    { n:totalWords.toLocaleString(), label:'Words' },
+  ];
+  document.getElementById('overview-stats').innerHTML = stats.map(s => `<div class="stat-card"><div class="stat-number">${s.n}</div><div class="stat-label">${s.label}</div></div>`).join('');
+  document.getElementById('overview-premise').textContent = p.premise||'—';
+  document.getElementById('overview-genre-setting').textContent = [p.genre,p.setting].filter(Boolean).join(' · ')||'—';
+  document.getElementById('overview-notes').textContent = p.notes||'—';
+}
+
+// ══ IDEAS ══
+function saveIdea() {
+  const text = document.getElementById('idea-input').value.trim(); if (!text) return;
+  const tag = document.getElementById('idea-tag').value;
+  const p = getProject(state.currentProjectId); if (!p) return;
+  p.ideas.unshift({ id:uid(), text, tag, createdAt:Date.now() });
+  save(); document.getElementById('idea-input').value = ''; document.getElementById('idea-tag').value = 'general';
+  renderIdeas(); showToast('Idea saved');
+}
+
+function filterIdeas(tag, el) {
+  state.ideaFilter = tag;
+  document.querySelectorAll('#idea-filters .filter-chip').forEach(c => c.classList.toggle('active', c.dataset.tag === tag));
+  renderIdeas();
+}
+
+function renderIdeas() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const list = document.getElementById('ideas-list');
+  const ideas = (p.ideas||[]).filter(i => state.ideaFilter==='all' || i.tag===state.ideaFilter);
+  if (!ideas.length) { list.innerHTML = `<div class="empty-state"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><p>${state.ideaFilter==='all'?'Nothing captured yet. Use the field above.':'No ideas with this tag yet.'}</p></div>`; return; }
+  list.innerHTML = ideas.map(idea => `
+    <div class="idea-card fade-in">
+      <div class="idea-card-tag tag-${idea.tag}">${tagLabel(idea.tag)}</div>
+      <div class="idea-card-text">${escHtml(idea.text)}</div>
+      <div class="idea-card-meta">${formatDate(idea.createdAt)}</div>
+      <div class="idea-card-actions">
+        <button class="icon-btn" onclick="openEditIdea('${idea.id}')" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn del" onclick="deleteIdea('${idea.id}')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        <button class="icon-btn" onclick="exportIdea('${idea.id}')" title="Export"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+    </div>`).join('');
+}
+
+function openEditIdea(id) {
+  const p = getProject(state.currentProjectId);
+  const idea = (p.ideas||[]).find(i => i.id===id); if (!idea) return;
+  state.editingIdeaId = id;
+  document.getElementById('edit-idea-tag').value = idea.tag;
+  document.getElementById('edit-idea-text').value = idea.text;
+  openModal('edit-idea-modal');
+}
+function updateIdea() {
+  const p = getProject(state.currentProjectId);
+  const idea = (p.ideas||[]).find(i => i.id===state.editingIdeaId); if (!idea) return;
+  idea.tag = document.getElementById('edit-idea-tag').value;
+  idea.text = document.getElementById('edit-idea-text').value.trim();
+  if (!idea.text) { showToast('Idea cannot be empty'); return; }
+  save(); closeModal('edit-idea-modal'); renderIdeas(); showToast('Idea updated');
+}
+function deleteIdea(id) {
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Delete this idea?')) return;
+  p.ideas = (p.ideas||[]).filter(i => i.id!==id);
+  save(); renderIdeas(); renderOverview(); showToast('Idea deleted');
+}
+function exportIdea(id) {
+  const p = getProject(state.currentProjectId);
+  const idea = (p.ideas||[]).find(i => i.id===id); if (!idea) return;
+  downloadText(`[${tagLabel(idea.tag)}] ${formatDate(idea.createdAt)}\n\n${idea.text}`, `idea-${idea.id}.txt`);
+}
+
+// ══ CHAPTERS ══
+function setChapterView(v) {
+  state.chapterView = v;
+  document.getElementById('view-list-btn').classList.toggle('active', v==='list');
+  document.getElementById('view-outline-btn').classList.toggle('active', v==='outline');
+  document.getElementById('chapters-list-view').style.display = v==='list' ? '' : 'none';
+  document.getElementById('chapters-outline-view').classList.toggle('active', v==='outline');
+}
+
+function renderChapters() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const chapters = p.chapters||[];
+  const listEl = document.getElementById('chapters-list-view');
+  const outlineEl = document.getElementById('chapters-outline-view');
+
+  if (!chapters.length) {
+    listEl.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg><p>No chapters yet. Press New to start writing.</p></div>`;
+    outlineEl.innerHTML = '';
+    return;
+  }
+
+  listEl.innerHTML = chapters.map((ch, i) => {
+    const wc = wordCount(ch.content||'');
+    const statusClass = ch.status==='complete'?'status-complete':ch.status==='progress'?'status-progress':'status-draft';
+    const statusText = ch.status==='complete'?'Complete':ch.status==='progress'?'In Progress':'Draft';
+    return `<div class="chapter-list-item fade-in" onclick="openChapterEditor('${ch.id}')">
+      <div class="chapter-num-badge">${i+1}</div>
+      <div class="chapter-list-content">
+        <div class="chapter-list-title">${ch.title ? escHtml(ch.title) : '<span style="color:var(--text-muted);font-style:italic;">Untitled chapter</span>'}</div>
+        ${ch.summary ? `<div class="chapter-list-summary">${escHtml(ch.summary)}</div>` : ''}
+        <div class="chapter-list-meta">
+          <span class="status-badge ${statusClass}" style="cursor:default;">${statusText}</span>
+          <span style="font-size:11px;color:var(--text-muted);">${wc.toLocaleString()} word${wc!==1?'s':''}</span>
+        </div>
+      </div>
+      <div class="chapter-list-actions">
+        <button class="icon-btn" onclick="event.stopPropagation();moveChapter('${ch.id}',-1)" title="Move up"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+        <button class="icon-btn" onclick="event.stopPropagation();moveChapter('${ch.id}',1)" title="Move down"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+
+  outlineEl.innerHTML = `<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">` +
+    chapters.map((ch,i) => `
+      <div class="outline-item">
+        <div class="outline-num">${i+1}</div>
+        <div>
+          <div class="outline-title">${ch.title ? escHtml(ch.title) : '<em style="color:var(--text-muted)">Untitled</em>'}</div>
+          ${ch.summary ? `<div class="outline-summary">${escHtml(ch.summary)}</div>` : ''}
+        </div>
+      </div>`).join('') + `</div>`;
+}
+
+function openNewChapter() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const ch = { id:uid(), title:'', summary:'', content:'', status:'draft', createdAt:Date.now() };
+  if (!p.chapters) p.chapters = [];
+  p.chapters.push(ch);
+  save();
+  openChapterEditor(ch.id);
+}
+
+function openChapterEditor(chapterId) {
+  const p = getProject(state.currentProjectId);
+  const ch = (p.chapters||[]).find(c => c.id===chapterId); if (!ch) return;
+  const idx = (p.chapters||[]).findIndex(c => c.id===chapterId);
+  state.editingChapterId = chapterId;
+
+  document.getElementById('editor-chapter-num').textContent = `Chapter ${idx+1}`;
+  document.getElementById('editor-title').value = ch.title||'';
+  document.getElementById('editor-summary').value = ch.summary||'';
+  document.getElementById('editor-textarea').value = ch.content||'';
+  setStatusBadge(ch.status||'draft');
+  updateWordCount();
+  showScreen('chapter-editor-screen');
+  setTimeout(() => document.getElementById('editor-textarea').focus(), 100);
+}
+
+function closeChapterEditor() {
+  flushChapterSave();
+  showScreen('project-screen');
+  renderChapters();
+  renderOverview();
+}
+
+function setStatusBadge(status) {
+  const btn = document.getElementById('editor-status-btn');
+  btn.className = `status-badge status-${status==='complete'?'complete':status==='progress'?'progress':'draft'}`;
+  btn.textContent = status==='complete'?'Complete':status==='progress'?'In Progress':'Draft';
+}
+
+function cycleStatus() {
+  const p = getProject(state.currentProjectId);
+  const ch = (p.chapters||[]).find(c => c.id===state.editingChapterId); if (!ch) return;
+  const cycle = { draft:'progress', progress:'complete', complete:'draft' };
+  ch.status = cycle[ch.status||'draft']||'draft';
+  setStatusBadge(ch.status);
+  save();
+}
+
+function autoSaveChapter() {
+  clearTimeout(state.autoSaveTimer);
+  state.autoSaveTimer = setTimeout(flushChapterSave, 800);
+}
+
+function flushChapterSave() {
+  clearTimeout(state.autoSaveTimer);
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const ch = (p.chapters||[]).find(c => c.id===state.editingChapterId); if (!ch) return;
+  ch.title = document.getElementById('editor-title').value;
+  ch.summary = document.getElementById('editor-summary').value;
+  ch.content = document.getElementById('editor-textarea').value;
+  save();
+}
+
+function updateWordCount() {
+  const text = document.getElementById('editor-textarea').value;
+  document.getElementById('word-count-display').textContent = wordCount(text).toLocaleString();
+}
+
+function moveChapter(id, dir) {
+  const p = getProject(state.currentProjectId);
+  const idx = (p.chapters||[]).findIndex(c => c.id===id); if (idx<0) return;
+  const newIdx = idx+dir;
+  if (newIdx<0 || newIdx>=p.chapters.length) return;
+  [p.chapters[idx], p.chapters[newIdx]] = [p.chapters[newIdx], p.chapters[idx]];
+  save(); renderChapters();
+}
+
+function exportCurrentChapter() {
+  flushChapterSave();
+  const p = getProject(state.currentProjectId);
+  const ch = (p.chapters||[]).find(c => c.id===state.editingChapterId); if (!ch) return;
+  const idx = (p.chapters||[]).findIndex(c => c.id===state.editingChapterId);
+  const header = `${p.title}\nChapter ${idx+1}${ch.title?' — '+ch.title:''}\n${ch.summary?'Summary: '+ch.summary+'\n':''}\n${'─'.repeat(40)}\n\n`;
+  downloadText(header + (ch.content||''), `chapter-${idx+1}.txt`);
+  showToast('Chapter exported');
+}
+
+function deleteCurrentChapter() {
+  if (!confirm('Delete this chapter? This cannot be undone.')) return;
+  const p = getProject(state.currentProjectId);
+  p.chapters = (p.chapters||[]).filter(c => c.id!==state.editingChapterId);
+  save(); closeChapterEditor(); showToast('Chapter deleted');
+}
+
+function exportManuscript() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!(p.chapters||[]).length) { showToast('No chapters to export'); return; }
+  let text = `${p.title}\n${'═'.repeat(p.title.length)}\n\n`;
+  if (p.premise) text += `${p.premise}\n\n${'─'.repeat(40)}\n\n`;
+  (p.chapters||[]).forEach((ch, i) => {
+    text += `Chapter ${i+1}${ch.title?' — '+ch.title:''}\n${'─'.repeat(30)}\n`;
+    if (ch.summary) text += `[${ch.summary}]\n`;
+    text += `\n${ch.content||''}\n\n\n`;
+  });
+  downloadText(text, `${p.title.replace(/\s+/g,'-').toLowerCase()}-manuscript.txt`);
+  showToast('Manuscript exported');
+}
+
+// ══ CHARACTERS ══
+function renderCharacters() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const grid = document.getElementById('characters-grid');
+  const chars = p.characters||[];
+  if (!chars.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><p>No characters yet. Press New to create your first character card.</p></div>`;
+    return;
+  }
+  grid.innerHTML = chars.map(ch => {
+    const initial = (ch.name||'?')[0].toUpperCase();
+    return `<div class="character-card role-${ch.role} fade-in" onclick="viewCharacter('${ch.id}')">
+      <button class="character-card-delete" onclick="event.stopPropagation();deleteCharacter('${ch.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <div class="character-avatar avatar-${ch.role}">${initial}</div>
+      <div class="character-name">${escHtml(ch.name)}</div>
+      <div class="character-role-tag role-tag-${ch.role}">${roleLabel(ch.role)}</div>
+      ${ch.physical||ch.personality ? `<div class="character-desc">${escHtml(ch.physical||ch.personality||'')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openNewCharacter() {
+  state.editingCharacterId = null;
+  document.getElementById('char-modal-title').textContent = 'New Character';
+  ['char-name','char-physical','char-personality','char-backstory','char-arc','char-relationships','char-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('char-role').value = 'supporting';
+  openModal('character-modal');
+}
+
+function saveCharacter() {
+  const name = document.getElementById('char-name').value.trim();
+  if (!name) { showToast('Please add a name'); return; }
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.characters) p.characters = [];
+
+  if (state.editingCharacterId) {
+    const ch = p.characters.find(c => c.id===state.editingCharacterId); if (!ch) return;
+    ch.name=name; ch.role=document.getElementById('char-role').value;
+    ch.physical=document.getElementById('char-physical').value.trim();
+    ch.personality=document.getElementById('char-personality').value.trim();
+    ch.backstory=document.getElementById('char-backstory').value.trim();
+    ch.arc=document.getElementById('char-arc').value.trim();
+    ch.relationships=document.getElementById('char-relationships').value.trim();
+    ch.notes=document.getElementById('char-notes').value.trim();
+    save(); closeModal('character-modal'); renderCharacters(); showToast('Character updated');
+  } else {
+    const ch = {
+      id:uid(), name, role:document.getElementById('char-role').value,
+      physical:document.getElementById('char-physical').value.trim(),
+      personality:document.getElementById('char-personality').value.trim(),
+      backstory:document.getElementById('char-backstory').value.trim(),
+      arc:document.getElementById('char-arc').value.trim(),
+      relationships:document.getElementById('char-relationships').value.trim(),
+      notes:document.getElementById('char-notes').value.trim(),
+      createdAt:Date.now()
+    };
+    p.characters.push(ch);
+    save(); closeModal('character-modal'); renderCharacters(); renderOverview(); showToast('Character created');
+  }
+}
+
+function viewCharacter(id) {
+  const p = getProject(state.currentProjectId);
+  const ch = (p.characters||[]).find(c => c.id===id); if (!ch) return;
+  state.viewingCharacterId = id;
+  document.getElementById('detail-char-name').textContent = ch.name;
+  document.getElementById('detail-char-role-tag').innerHTML = `<span class="character-role-tag role-tag-${ch.role}" style="margin-top:4px;display:inline-block;">${roleLabel(ch.role)}</span>`;
+  const fields = [
+    { label:'Physical description', key:'physical' },
+    { label:'Personality & voice', key:'personality' },
+    { label:'Backstory', key:'backstory' },
+    { label:'Arc', key:'arc' },
+    { label:'Relationships', key:'relationships' },
+    { label:'Notes', key:'notes' },
+  ];
+  document.getElementById('detail-char-body').innerHTML = fields.map(f =>
+    `<div class="char-detail-section">
+      <div class="char-detail-label">${f.label}</div>
+      ${ch[f.key] ? `<div class="char-detail-text">${escHtml(ch[f.key])}</div>` : `<div class="char-detail-empty">—</div>`}
+    </div>`
+  ).join('');
+  openModal('character-detail-modal');
+}
+
+function editCharacterFromDetail() {
+  closeModal('character-detail-modal');
+  const p = getProject(state.currentProjectId);
+  const ch = (p.characters||[]).find(c => c.id===state.viewingCharacterId); if (!ch) return;
+  state.editingCharacterId = ch.id;
+  document.getElementById('char-modal-title').textContent = 'Edit Character';
+  document.getElementById('char-name').value = ch.name||'';
+  document.getElementById('char-role').value = ch.role||'supporting';
+  document.getElementById('char-physical').value = ch.physical||'';
+  document.getElementById('char-personality').value = ch.personality||'';
+  document.getElementById('char-backstory').value = ch.backstory||'';
+  document.getElementById('char-arc').value = ch.arc||'';
+  document.getElementById('char-relationships').value = ch.relationships||'';
+  document.getElementById('char-notes').value = ch.notes||'';
+  openModal('character-modal');
+}
+
+function deleteCharacter(id) {
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Delete this character?')) return;
+  p.characters = (p.characters||[]).filter(c => c.id!==id);
+  save(); renderCharacters(); renderOverview(); showToast('Character deleted');
+}
+
+function exportCharacter() {
+  const p = getProject(state.currentProjectId);
+  const ch = (p.characters||[]).find(c => c.id===state.viewingCharacterId); if (!ch) return;
+  let text = `${ch.name} — ${roleLabel(ch.role)}\n${'─'.repeat(40)}\n\n`;
+  const fields = ['physical','personality','backstory','arc','relationships','notes'];
+  const labels = ['Physical description','Personality & voice','Backstory','Arc','Relationships','Notes'];
+  fields.forEach((f,i) => { if (ch[f]) text += `${labels[i]}\n${ch[f]}\n\n`; });
+  downloadText(text, `character-${ch.name.replace(/\s+/g,'-').toLowerCase()}.txt`);
+  showToast('Character exported');
+}
+
+// ══ GUIDE ══
+function openGuide() { document.getElementById('guide-panel').classList.add('open'); }
+function closeGuide() { document.getElementById('guide-panel').classList.remove('open'); }
+
+// ══ MODALS ══
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target===o) closeModal(o.id); });
+});
+
+// ══ UTILS ══
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function wordCount(text) {
+  if (!text||!text.trim()) return 0;
+  return text.trim().split(/\s+/).length;
+}
+function tagLabel(tag) {
+  return { general:'General',scene:'Scene',dialogue:'Dialogue',image:'Image / Atmosphere',character:'Character',plot:'Plot' }[tag]||tag;
+}
+function roleLabel(role) {
+  return { protagonist:'Protagonist',antagonist:'Antagonist',supporting:'Supporting',minor:'Minor' }[role]||role;
+}
+function formatDate(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function downloadText(text, filename) {
+  const blob = new Blob([text],{type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ══ LOGIN KEYBOARD ══
+document.addEventListener('DOMContentLoaded', () => {
+  ['login-email','login-password'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key==='Enter') signIn(); });
+  });
+});
+
+// ══ KEYBOARD ══
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    closeGuide();
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  }
+  if ((e.metaKey||e.ctrlKey) && e.key==='Enter') {
+    if (document.activeElement===document.getElementById('idea-input')) saveIdea();
+  }
+  if ((e.metaKey||e.ctrlKey) && e.key==='s') {
+    if (document.getElementById('chapter-editor-screen').classList.contains('active')) {
+      e.preventDefault(); flushChapterSave(); showToast('Saved');
+    }
+  }
+});
+
+
+// ══ PLOT ══
+let plotView = 'threads';
+let selectedThreadColor = '#7a9e7e';
+
+function setPlotView(v) {
+  plotView = v;
+  document.getElementById('plot-view-threads-btn').classList.toggle('active', v==='threads');
+  document.getElementById('plot-view-timeline-btn').classList.toggle('active', v==='timeline');
+  document.getElementById('plot-threads-view').style.display = v==='threads' ? '' : 'none';
+  document.getElementById('plot-timeline-view').style.display = v==='timeline' ? '' : 'none';
+  if (v==='timeline') renderTimeline();
+}
+
+function renderPlot() {
+  renderPhases();
+  renderThreadList();
+  if (plotView==='timeline') renderTimeline();
+}
+
+function renderThreadList() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const threads = p.plotThreads||[];
+  const el = document.getElementById('plot-threads-list');
+  if (!threads.length) {
+    el.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 6 2-4"/></svg><p>No plot threads yet. Create a thread to start mapping your story's structure.</p></div>`;
+    return;
+  }
+  el.innerHTML = threads.map(thread => {
+    const pts = thread.points||[];
+    return `<div class="plot-thread-card fade-in">
+      <div class="plot-thread-header" onclick="toggleThread('${thread.id}')">
+        <div class="thread-color-dot" style="background:${thread.color||'#7a9e7e'};"></div>
+        <div class="thread-name">${escHtml(thread.name)}</div>
+        <div class="thread-meta">${pts.length} point${pts.length!==1?'s':''}</div>
+        <div class="thread-actions" onclick="event.stopPropagation()">
+          <button class="icon-btn" onclick="openEditThread('${thread.id}')" title="Edit thread">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn del" onclick="deleteThread('${thread.id}')" title="Delete thread">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+        <svg class="thread-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      ${thread.desc ? `<div class="plot-thread-desc">${escHtml(thread.desc)}</div>` : ''}
+      <div class="plot-thread-body" id="thread-body-${thread.id}">
+        ${pts.length ? pts.map(pt => `
+          <div class="plot-point-item" onclick="openEditPoint('${thread.id}','${pt.id}')">
+            <div class="phase-badge">${getPhaseName(state.currentProjectId, pt.phaseId)}</div>
+            <div class="point-content">
+              <div class="point-title">${escHtml(pt.title)}<span class="point-type-tag ptype-${pt.type||'setup'}">${ptypeLabel(pt.type||'setup')}</span></div>
+              ${pt.desc ? `<div class="point-desc">${escHtml(pt.desc)}</div>` : ''}
+            </div>
+          </div>`).join('') : `<div style="padding:10px 0;font-size:13px;color:var(--text-muted);font-style:italic;">No points yet.</div>`}
+        <button class="thread-add-point" onclick="openNewPoint('${thread.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Add plot point
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleThread(id) {
+  const body = document.getElementById('thread-body-'+id);
+  const card = body.closest('.plot-thread-card');
+  const chevron = card.querySelector('.thread-chevron');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+function renderTimeline() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const threads = p.plotThreads||[];
+  const phases = p.plotPhases||[];
+  const grid = document.getElementById('timeline-grid');
+
+  if (!threads.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;font-size:13px;color:var(--text-muted);">Create plot threads to see your timeline.</div>';
+    return;
+  }
+  if (!phases.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;font-size:13px;color:var(--text-muted);">Add story phases above to build your timeline.</div>';
+    return;
+  }
+
+  const phaseColors = ['var(--sage)','var(--gold)','var(--slate)','#9a78a8','#a07878','var(--text-dim)','#78a0a0','#a89e6e'];
+  const colCount = phases.length + 1;
+  grid.style.gridTemplateColumns = `140px ${' 1fr'.repeat(phases.length)}`;
+
+  // Header row
+  let html = `<div class="tl-header-cell" style="background:var(--bg-deep);grid-column:1;">Thread</div>`;
+  phases.forEach((ph, i) => {
+    const col = phaseColors[i % phaseColors.length];
+    html += `<div class="tl-header-cell" style="color:${col};">${escHtml(ph.name)}</div>`;
+  });
+
+  // Thread rows
+  threads.forEach(thread => {
+    html += `<div class="tl-thread-label"><div class="thread-color-dot" style="background:${thread.color||'#7a9e7e'};margin-top:3px;flex-shrink:0;"></div><div class="tl-thread-name">${escHtml(thread.name)}</div></div>`;
+    phases.forEach(ph => {
+      const pts = (thread.points||[]).filter(pt => pt.phaseId===ph.id);
+      html += `<div class="tl-cell">`;
+      if (pts.length) {
+        pts.forEach(pt => {
+          html += `<div class="tl-point-node" onclick="openEditPoint('${thread.id}','${pt.id}')">
+            <div class="tl-point-dot" style="background:${thread.color||'#7a9e7e'};"></div>
+            <div class="tl-point-title">${escHtml(pt.title)}</div>
+          </div>`;
+        });
+      } else {
+        html += `<div class="tl-empty">—</div>`;
+      }
+      html += `</div>`;
+    });
+  });
+
+  grid.innerHTML = html;
+}
+
+// Thread CRUD
+function openNewThread() {
+  state.editingThreadId = null;
+  document.getElementById('thread-modal-title').textContent = 'New Plot Thread';
+  document.getElementById('thread-name').value = '';
+  document.getElementById('thread-desc').value = '';
+  selectThreadColor('#7a9e7e', document.querySelector('.color-swatch[data-color="#7a9e7e"]'));
+  openModal('thread-modal');
+}
+
+function openEditThread(id) {
+  const p = getProject(state.currentProjectId);
+  const thread = (p.plotThreads||[]).find(t => t.id===id); if (!thread) return;
+  state.editingThreadId = id;
+  document.getElementById('thread-modal-title').textContent = 'Edit Thread';
+  document.getElementById('thread-name').value = thread.name||'';
+  document.getElementById('thread-desc').value = thread.desc||'';
+  const color = thread.color||'#7a9e7e';
+  document.getElementById('thread-color').value = color;
+  selectedThreadColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color===color));
+  openModal('thread-modal');
+}
+
+function selectThreadColor(color, el) {
+  selectedThreadColor = color;
+  document.getElementById('thread-color').value = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+}
+
+function saveThread() {
+  const name = document.getElementById('thread-name').value.trim();
+  if (!name) { showToast('Please add a thread name'); return; }
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.plotThreads) p.plotThreads = [];
+  const color = document.getElementById('thread-color').value || selectedThreadColor || '#7a9e7e';
+  const desc = document.getElementById('thread-desc').value.trim();
+
+  if (state.editingThreadId) {
+    const thread = p.plotThreads.find(t => t.id===state.editingThreadId);
+    if (thread) { thread.name=name; thread.color=color; thread.desc=desc; }
+    save(); closeModal('thread-modal'); renderThreadList(); renderTimeline(); showToast('Thread updated');
+  } else {
+    p.plotThreads.push({ id:uid(), name, color, desc, points:[] });
+    save(); closeModal('thread-modal'); renderThreadList(); showToast('Thread created');
+  }
+}
+
+function deleteThread(id) {
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Delete this thread and all its plot points?')) return;
+  p.plotThreads = (p.plotThreads||[]).filter(t => t.id!==id);
+  save(); renderThreadList(); renderTimeline(); showToast('Thread deleted');
+}
+
+// Point CRUD
+function populatePhaseSelector(selectedId) {
+  const p = getProject(state.currentProjectId);
+  const phases = p ? (p.plotPhases||[]) : [];
+  const sel = document.getElementById('point-phase');
+  sel.innerHTML = phases.length
+    ? phases.map(ph => `<option value="${ph.id}" ${ph.id===selectedId?'selected':''}>${escHtml(ph.name)}</option>`).join('')
+    : '<option value="">— add phases first —</option>';
+}
+
+function openNewPoint(threadId) {
+  document.getElementById('point-modal-title').textContent = 'New Plot Point';
+  document.getElementById('point-title').value = '';
+  document.getElementById('point-type').value = 'seed';
+  document.getElementById('point-desc').value = '';
+  document.getElementById('point-thread-id').value = threadId;
+  document.getElementById('point-edit-id').value = '';
+  document.getElementById('point-delete-btn').style.display = 'none';
+  populatePhaseSelector('');
+  openModal('point-modal');
+}
+
+function openEditPoint(threadId, pointId) {
+  const p = getProject(state.currentProjectId);
+  const thread = (p.plotThreads||[]).find(t => t.id===threadId); if (!thread) return;
+  const pt = (thread.points||[]).find(pt => pt.id===pointId); if (!pt) return;
+  document.getElementById('point-modal-title').textContent = 'Edit Plot Point';
+  document.getElementById('point-title').value = pt.title||'';
+  document.getElementById('point-type').value = pt.type||'seed';
+  document.getElementById('point-desc').value = pt.desc||'';
+  document.getElementById('point-thread-id').value = threadId;
+  document.getElementById('point-edit-id').value = pointId;
+  document.getElementById('point-delete-btn').style.display = '';
+  populatePhaseSelector(pt.phaseId||'');
+  openModal('point-modal');
+}
+
+function savePoint() {
+  const title = document.getElementById('point-title').value.trim();
+  if (!title) { showToast('Please add a title'); return; }
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const threadId = document.getElementById('point-thread-id').value;
+  const editId = document.getElementById('point-edit-id').value;
+  const thread = (p.plotThreads||[]).find(t => t.id===threadId); if (!thread) return;
+  if (!thread.points) thread.points = [];
+
+  const data = {
+    title,
+    phaseId: document.getElementById('point-phase').value,
+    type: document.getElementById('point-type').value,
+    desc: document.getElementById('point-desc').value.trim(),
+  };
+
+  if (editId) {
+    const pt = thread.points.find(pt => pt.id===editId);
+    if (pt) Object.assign(pt, data);
+    save(); closeModal('point-modal'); renderThreadList(); renderTimeline(); showToast('Point updated');
+  } else {
+    thread.points.push({ id:uid(), ...data });
+    save(); closeModal('point-modal'); renderThreadList(); renderTimeline(); showToast('Point added');
+    // Re-open the thread it belongs to
+    setTimeout(() => {
+      const body = document.getElementById('thread-body-'+threadId);
+      if (body && !body.classList.contains('open')) toggleThread(threadId);
+    }, 100);
+  }
+}
+
+function deletePointFromModal() {
+  const threadId = document.getElementById('point-thread-id').value;
+  const editId = document.getElementById('point-edit-id').value;
+  if (!editId) return;
+  if (!confirm('Delete this plot point?')) return;
+  const p = getProject(state.currentProjectId);
+  const thread = (p.plotThreads||[]).find(t => t.id===threadId); if (!thread) return;
+  thread.points = (thread.points||[]).filter(pt => pt.id!==editId);
+  save(); closeModal('point-modal'); renderThreadList(); renderTimeline(); showToast('Point deleted');
+}
+
+
+
+// ══ RESEARCH ══
+let researchCatFilter = 'all';
+let viewingResearchId = null;
+let pendingImageData = null;
+
+function renderResearch() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const search = (document.getElementById('research-search')||{}).value||'';
+  const entries = (p.research||[]).filter(e => {
+    const matchCat = researchCatFilter==='all' || e.cat===researchCatFilter;
+    const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase()) || (e.content||'').toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  const list = document.getElementById('research-list'); if (!list) return;
+  if (!entries.length) {
+    list.innerHTML = `<div class="empty-state"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><p>${(p.research||[]).length?'No entries match your search.':'No research entries yet. Press New entry to start building your library.'}</p></div>`;
+    return;
+  }
+  list.innerHTML = entries.map(e => `
+    <div class="research-entry fade-in" onclick="viewResearch('${e.id}')">
+      <div class="research-entry-header">
+        <div class="research-entry-main">
+          <div class="research-entry-title">${escHtml(e.title)}</div>
+          ${e.content ? `<div class="research-entry-preview">${escHtml(e.content)}</div>` : ''}
+          <div class="research-entry-meta">
+            <span class="research-cat-tag">${escHtml(e.cat||'Other')}</span>
+            ${e.source ? `<span class="research-source">${escHtml(e.source)}</span>` : ''}
+            <span style="font-size:11px;color:var(--text-muted);">${formatDate(e.createdAt)}</span>
+          </div>
+        </div>
+        <div class="research-entry-actions" onclick="event.stopPropagation()">
+          <button class="icon-btn" onclick="openEditResearch('${e.id}')" title="Edit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="icon-btn del" onclick="deleteResearch('${e.id}')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function filterResearch(cat, el) {
+  researchCatFilter = cat;
+  document.querySelectorAll('#research-filters .filter-chip').forEach(c => c.classList.toggle('active', c.dataset.cat===cat));
+  renderResearch();
+}
+
+function openNewResearch() {
+  document.getElementById('research-modal-title').textContent = 'New Research Entry';
+  document.getElementById('research-title').value = '';
+  document.getElementById('research-cat').value = 'Herbs & Plants';
+  document.getElementById('research-content').value = '';
+  document.getElementById('research-source').value = '';
+  document.getElementById('research-edit-id').value = '';
+  document.getElementById('research-delete-btn').style.display = 'none';
+  openModal('research-modal');
+  setTimeout(() => document.getElementById('research-title').focus(), 120);
+}
+
+function openEditResearch(id) {
+  const p = getProject(state.currentProjectId);
+  const e = (p.research||[]).find(e => e.id===id); if (!e) return;
+  document.getElementById('research-modal-title').textContent = 'Edit Entry';
+  document.getElementById('research-title').value = e.title||'';
+  document.getElementById('research-cat').value = e.cat||'Other';
+  document.getElementById('research-content').value = e.content||'';
+  document.getElementById('research-source').value = e.source||'';
+  document.getElementById('research-edit-id').value = id;
+  document.getElementById('research-delete-btn').style.display = '';
+  openModal('research-modal');
+}
+
+function saveResearch() {
+  const title = document.getElementById('research-title').value.trim();
+  if (!title) { showToast('Please add a title'); return; }
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.research) p.research = [];
+  const editId = document.getElementById('research-edit-id').value;
+  const data = {
+    title, cat: document.getElementById('research-cat').value,
+    content: document.getElementById('research-content').value.trim(),
+    source: document.getElementById('research-source').value.trim(),
+  };
+  if (editId) {
+    const e = p.research.find(e => e.id===editId);
+    if (e) Object.assign(e, data);
+    save(); closeModal('research-modal'); renderResearch(); showToast('Entry updated');
+  } else {
+    p.research.push({ id:uid(), ...data, createdAt:Date.now() });
+    save(); closeModal('research-modal'); renderResearch(); renderOverview(); showToast('Entry saved');
+  }
+}
+
+function deleteResearchFromModal() {
+  const id = document.getElementById('research-edit-id').value; if (!id) return;
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Delete this research entry?')) return;
+  p.research = (p.research||[]).filter(e => e.id!==id);
+  save(); closeModal('research-modal'); renderResearch(); renderOverview(); showToast('Entry deleted');
+}
+
+function deleteResearch(id) {
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Delete this research entry?')) return;
+  p.research = (p.research||[]).filter(e => e.id!==id);
+  save(); renderResearch(); renderOverview(); showToast('Entry deleted');
+}
+
+function viewResearch(id) {
+  const p = getProject(state.currentProjectId);
+  const e = (p.research||[]).find(e => e.id===id); if (!e) return;
+  viewingResearchId = id;
+  document.getElementById('rd-title').textContent = e.title;
+  document.getElementById('rd-cat-tag').innerHTML = `<span class="research-cat-tag">${escHtml(e.cat||'Other')}</span>`;
+  document.getElementById('rd-content').textContent = e.content||'—';
+  document.getElementById('rd-source').textContent = e.source ? 'Source: ' + e.source : '';
+  openModal('research-detail-modal');
+}
+
+function editResearchFromDetail() {
+  closeModal('research-detail-modal');
+  openEditResearch(viewingResearchId);
+}
+
+function exportResearchEntry() {
+  const p = getProject(state.currentProjectId);
+  const e = (p.research||[]).find(e => e.id===viewingResearchId); if (!e) return;
+  const text = `${e.title}\n[${e.cat||'Other'}]${e.source?' — '+e.source:''}\n${formatDate(e.createdAt)}\n${'─'.repeat(40)}\n\n${e.content||''}`;
+  downloadText(text, `research-${e.title.replace(/\s+/g,'-').toLowerCase()}.txt`);
+  showToast('Entry exported');
+}
+
+function exportAllResearch() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!(p.research||[]).length) { showToast('No research entries to export'); return; }
+  let text = `${p.title} — Research Library\n${'═'.repeat(40)}\n\n`;
+  const cats = [...new Set((p.research||[]).map(e => e.cat||'Other'))].sort();
+  cats.forEach(cat => {
+    const entries = (p.research||[]).filter(e => (e.cat||'Other')===cat);
+    text += `${cat}\n${'─'.repeat(cat.length)}\n\n`;
+    entries.forEach(e => {
+      text += `${e.title}${e.source?' ('+e.source+')':''}\n${e.content||''}\n\n`;
+    });
+  });
+  downloadText(text, `${p.title.replace(/\s+/g,'-').toLowerCase()}-research.txt`);
+  showToast('Research library exported');
+}
+
+// ══ VISUALS ══
+function renderVisuals() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const board = document.getElementById('visual-board'); if (!board) return;
+  const items = p.visuals||[];
+  if (!items.length) {
+    board.innerHTML = `<div class="empty-state" style="grid-column:1/-1;columns:unset;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><p>Add images and links to build your visual inspiration board.</p></div>`;
+    return;
+  }
+  board.innerHTML = items.map(item => {
+    if (item.type==='image') {
+      return `<div class="visual-card">
+        <img class="visual-card-img" src="${item.dataUrl}" alt="${escHtml(item.caption||'')}" onclick="openLightbox('${item.id}')">
+        ${item.caption ? `<div class="visual-card-caption">${escHtml(item.caption)}</div>` : ''}
+        <button class="visual-card-del" onclick="event.stopPropagation();deleteVisual('${item.id}')" title="Remove">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>`;
+    } else {
+      return `<div class="visual-link-card" onclick="window.open('${escHtml(item.url)}','_blank')">
+        <div class="visual-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>
+        <div class="visual-link-title">${escHtml(item.title||item.url)}</div>
+        <div class="visual-link-url">${escHtml(item.url)}</div>
+        ${item.desc ? `<div class="visual-link-desc">${escHtml(item.desc)}</div>` : ''}
+        <button class="visual-card-del" onclick="event.stopPropagation();deleteVisual('${item.id}')" title="Remove">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>`;
+    }
+  }).join('');
+}
+
+function handleImageUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { showToast('Image too large — please use files under 3MB'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingImageData = ev.target.result;
+    document.getElementById('caption-preview').src = pendingImageData;
+    document.getElementById('caption-text').value = '';
+    openModal('caption-modal');
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function confirmImageSave() {
+  if (!pendingImageData) return;
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.visuals) p.visuals = [];
+  p.visuals.unshift({ id:uid(), type:'image', dataUrl:pendingImageData, caption:document.getElementById('caption-text').value.trim(), createdAt:Date.now() });
+  pendingImageData = null;
+  try { save(); } catch(err) { showToast('Storage full — try a smaller image'); return; }
+  closeModal('caption-modal');
+  renderVisuals();
+  showToast('Image added');
+}
+
+function openAddLink() {
+  document.getElementById('link-url').value = '';
+  document.getElementById('link-title').value = '';
+  document.getElementById('link-desc').value = '';
+  openModal('link-modal');
+  setTimeout(() => document.getElementById('link-url').focus(), 120);
+}
+
+function saveLink() {
+  const url = document.getElementById('link-url').value.trim();
+  if (!url) { showToast('Please add a URL'); return; }
+  const title = document.getElementById('link-title').value.trim();
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.visuals) p.visuals = [];
+  p.visuals.unshift({ id:uid(), type:'link', url, title:title||url, desc:document.getElementById('link-desc').value.trim(), createdAt:Date.now() });
+  save(); closeModal('link-modal'); renderVisuals(); showToast('Link added');
+}
+
+function deleteVisual(id) {
+  const p = getProject(state.currentProjectId);
+  if (!confirm('Remove this from the board?')) return;
+  p.visuals = (p.visuals||[]).filter(v => v.id!==id);
+  save(); renderVisuals(); showToast('Removed');
+}
+
+function openLightbox(id) {
+  const p = getProject(state.currentProjectId);
+  const item = (p.visuals||[]).find(v => v.id===id); if (!item||item.type!=='image') return;
+  document.getElementById('lightbox-img').src = item.dataUrl;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// ══ PHASES ══
+function getPhaseName(projectId, phaseId) {
+  const p = getProject(projectId); if (!p) return '—';
+  const ph = (p.plotPhases||[]).find(ph => ph.id===phaseId);
+  if (!ph) return '—';
+  // truncate for badge
+  return ph.name.length > 12 ? ph.name.slice(0,11)+'…' : ph.name;
+}
+
+function renderPhases() {
+  const p = getProject(state.currentProjectId); if (!p) return;
+  const phases = p.plotPhases||[];
+  const bar = document.getElementById('phases-bar');
+  if (!bar) return;
+
+  let html = '';
+  if (phases.length) {
+    const phaseColors = ['var(--sage)','var(--gold)','var(--slate)','#9a78a8','#a07878','var(--text-dim)','#78a0a0','#a89e6e'];
+    html = phases.map((ph, i) => {
+      const col = phaseColors[i % phaseColors.length];
+      return `<button class="phase-chip" onclick="openEditPhase('${ph.id}')">
+        <div class="phase-chip-dot" style="background:${col};"></div>
+        ${escHtml(ph.name)}
+      </button>`;
+    }).join('');
+  } else {
+    html = `<span class="phases-empty-hint">No story phases yet —</span>`;
+  }
+  html += `<button class="phase-chip-add" onclick="openNewPhase()">+ Add phase</button>`;
+  bar.innerHTML = html;
+}
+
+function openNewPhase() {
+  state.editingPhaseId = null;
+  document.getElementById('phase-modal-title').textContent = 'New Phase';
+  document.getElementById('phase-name').value = '';
+  document.getElementById('phase-edit-id').value = '';
+  document.getElementById('phase-delete-btn').style.display = 'none';
+  openModal('phase-modal');
+  setTimeout(() => document.getElementById('phase-name').focus(), 120);
+}
+
+function openEditPhase(id) {
+  const p = getProject(state.currentProjectId);
+  const ph = (p.plotPhases||[]).find(ph => ph.id===id); if (!ph) return;
+  state.editingPhaseId = id;
+  document.getElementById('phase-modal-title').textContent = 'Edit Phase';
+  document.getElementById('phase-name').value = ph.name||'';
+  document.getElementById('phase-edit-id').value = id;
+  document.getElementById('phase-delete-btn').style.display = '';
+  openModal('phase-modal');
+  setTimeout(() => document.getElementById('phase-name').focus(), 120);
+}
+
+function savePhase() {
+  const name = document.getElementById('phase-name').value.trim();
+  if (!name) { showToast('Please name this phase'); return; }
+  const p = getProject(state.currentProjectId); if (!p) return;
+  if (!p.plotPhases) p.plotPhases = [];
+  const editId = document.getElementById('phase-edit-id').value;
+  if (editId) {
+    const ph = p.plotPhases.find(ph => ph.id===editId);
+    if (ph) ph.name = name;
+    save(); closeModal('phase-modal'); renderPhases(); renderThreadList(); renderTimeline(); showToast('Phase renamed');
+  } else {
+    p.plotPhases.push({ id:uid(), name });
+    save(); closeModal('phase-modal'); renderPhases(); renderTimeline(); showToast('Phase added');
+  }
+}
+
+function deletePhaseFromModal() {
+  const id = document.getElementById('phase-edit-id').value; if (!id) return;
+  const p = getProject(state.currentProjectId);
+  const ph = (p.plotPhases||[]).find(ph => ph.id===id); if (!ph) return;
+  if (!confirm(`Delete phase "${ph.name}"? Plot points in this phase will lose their phase tag.`)) return;
+  p.plotPhases = p.plotPhases.filter(ph => ph.id!==id);
+  save(); closeModal('phase-modal'); renderPhases(); renderThreadList(); renderTimeline(); showToast('Phase deleted');
+}
+
+function ptypeLabel(type) {
+  return { seed:'Seed', root:'Root', storm:'Storm', threshold:'Threshold', blossom:'Blossom', aftermath:'Aftermath' }[type]||type;
+}
+
+// ══ INIT ══
+checkSession();
+</script>
+</body>
+</html>
